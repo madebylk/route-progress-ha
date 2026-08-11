@@ -6,7 +6,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import RouteProgressAPI, RouteProgressAPIError, RouteProgressAuthError
@@ -35,14 +35,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if config.get(CONF_CLOUDFLARE_ACCESS_ENABLED)
         else None,
     )
+    manager = RouteProgressManager(hass, entry, api, config)
     try:
         await api.async_check_auth()
     except RouteProgressAuthError as err:
         raise ConfigEntryAuthFailed from err
     except RouteProgressAPIError as err:
-        raise ConfigEntryNotReady(str(err)) from err
+        manager.record_connection_error(err)
 
-    manager = RouteProgressManager(hass, entry, api, config)
     await manager.async_load()
     entry.runtime_data = manager
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))

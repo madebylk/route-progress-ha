@@ -65,6 +65,7 @@ class RouteProgressManager:
         self.expires_at: str | None = None
         self.destination_name: str | None = None
         self.destination_key: str | None = None
+        self.last_successful_connection: datetime | None = None
         self.last_error: str | None = None
         self.available = True
 
@@ -86,6 +87,10 @@ class RouteProgressManager:
         snapshot = self._snapshot()
         return snapshot.destination_valid and snapshot.position_valid
 
+    def record_connection_error(self, err: RouteProgressAPIError) -> None:
+        """Record an API error detected while setting up the integration."""
+        self._mark_error(err)
+
     async def async_load(self) -> None:
         """Restore the active trip state after a HA restart."""
         data = await self._store.async_load() or {}
@@ -94,6 +99,7 @@ class RouteProgressManager:
         self.expires_at = _optional_string(data.get("expires_at"))
         self.destination_name = _optional_string(data.get("destination_name"))
         self.destination_key = _optional_string(data.get("destination_key"))
+
     async def async_start(self) -> None:
         """Start entity and interval listeners, then update restored state."""
         destination_entity = self.config[CONF_DESTINATION_ENTITY]
@@ -133,6 +139,7 @@ class RouteProgressManager:
             snapshot = self._snapshot()
 
             if not self.active:
+                await self._async_check_connection()
                 return
 
             if snapshot.destination_key != self.destination_key:
@@ -140,6 +147,8 @@ class RouteProgressManager:
                 return
             if snapshot.position_valid:
                 await self._async_update(snapshot)
+                return
+            await self._async_check_connection()
 
     async def async_manual_start(self) -> None:
         """Create a trip after the Home Assistant start button is pressed."""
@@ -174,6 +183,16 @@ class RouteProgressManager:
         self._mark_success()
         await self._async_save_and_notify()
         _LOGGER.info("Created Route Progress trip for %s", snapshot.destination_name)
+
+    async def _async_check_connection(self) -> None:
+        """Check API connectivity without creating or changing a trip."""
+        try:
+            await self.api.async_check_auth()
+        except RouteProgressAPIError as err:
+            self._mark_error(err)
+            return
+        self._mark_success()
+        self._notify_listeners()
 
     async def _async_update(self, snapshot: TripSnapshot) -> None:
         """Send current route values for the active trip."""
@@ -321,6 +340,7 @@ class RouteProgressManager:
             _LOGGER.info("Route Progress connection recovered")
         self.available = True
         self.last_error = None
+        self.last_successful_connection = dt_util.utcnow()
 
     @callback
     def _notify_listeners(self) -> None:

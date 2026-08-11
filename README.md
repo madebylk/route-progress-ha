@@ -61,12 +61,14 @@ dem Button `button.route_progress_start_share` manuell gestartet werden. Die
 Integration speichert die zurückgelieferte Share-URL und sendet danach
 fortlaufend Updates. Ändert sich der Zielname oder die Zielposition, wird die
 laufende Freigabe beendet. Ohne Betätigung des Buttons wird keine Freigabe
-erstellt.
+erstellt. Die Verbindung zum Route-Progress-Dienst wird auch ohne aktive
+Freigabe im konfigurierten Aktualisierungsintervall geprüft.
 
 Die Integration stellt folgende Entities bereit:
 
 - `sensor.route_progress_share_url`
 - `binary_sensor.route_progress_active_share`
+- `binary_sensor.route_progress_cloud_connection` (Diagnose)
 - `button.route_progress_start_share`
 - `button.route_progress_finish_share`
 

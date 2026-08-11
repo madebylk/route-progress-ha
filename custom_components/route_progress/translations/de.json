@@ -129,7 +129,8 @@
       "share_url": {"name": "Freigabelink"}
     },
     "binary_sensor": {
-      "active": {"name": "Aktive Freigabe"}
+      "active": {"name": "Aktive Freigabe"},
+      "cloud_connection": {"name": "Cloud-Verbindung"}
     },
     "button": {
       "start": {"name": "Freigabe starten"},

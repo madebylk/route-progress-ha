@@ -129,7 +129,8 @@
       "share_url": {"name": "Share URL"}
     },
     "binary_sensor": {
-      "active": {"name": "Active share"}
+      "active": {"name": "Active share"},
+      "cloud_connection": {"name": "Cloud connection"}
     },
     "button": {
       "start": {"name": "Start share"},

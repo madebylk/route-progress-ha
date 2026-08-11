@@ -45,11 +45,7 @@ class RouteProgressAPI:
 
     async def async_check_auth(self) -> None:
         """Validate connectivity and credentials without creating data."""
-        status, _ = await self._async_request(
-            "POST", "/api/v1/trips/ha-token-check/finish", expected={404}
-        )
-        if status != 404:
-            raise RouteProgressAPIError(f"Unexpected validation status {status}")
+        await self._async_request("GET", "/api/v1/health", expected={204})
 
     async def async_create_trip(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Create a trip and return its identifiers."""
