@@ -1,0 +1,112 @@
+name: Publish HACS release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "SemVer from manifest.json, without the leading v"
+        required: true
+        type: string
+      prerelease:
+        description: "Publish as a prerelease"
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: publish-hacs-release
+  cancel-in-progress: false
+
+jobs:
+  hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Validate HACS repository
+        uses: hacs/action@main
+        with:
+          category: integration
+
+  hassfest:
+    name: Hassfest validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Validate Home Assistant integration
+        uses: home-assistant/actions/hassfest@master
+
+  release:
+    name: Create GitHub release
+    needs:
+      - hacs
+      - hassfest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate release version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version must be a valid SemVer without a leading v." >&2
+            exit 1
+          fi
+
+          manifest_version="$(jq -r '.version' custom_components/route_progress/manifest.json)"
+          if [[ "$RELEASE_VERSION" != "$manifest_version" ]]; then
+            echo "Requested version $RELEASE_VERSION does not match manifest version $manifest_version." >&2
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "Tag v$RELEASE_VERSION already exists." >&2
+            exit 1
+          fi
+
+      - name: Publish stable release
+        if: ${{ inputs.prerelease == false }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: >-
+          gh release create "v$RELEASE_VERSION"
+          --target "$GITHUB_SHA"
+          --title "Route Progress v$RELEASE_VERSION"
+          --generate-notes
+          --latest
+
+      - name: Publish prerelease
+        if: ${{ inputs.prerelease }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: >-
+          gh release create "v$RELEASE_VERSION"
+          --target "$GITHUB_SHA"
+          --title "Route Progress v$RELEASE_VERSION"
+          --generate-notes
+          --prerelease
+
+      - name: Write release summary
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          echo "## Route Progress v$RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "The GitHub release is ready for HACS." >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,113 @@
+{
+  "title": "Route Progress",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Route Progress einrichten",
+        "description": "Verbinde Home Assistant mit Route Progress. Als Pflicht markierte Entities müssen ausgewählt werden; optionale Routendaten dürfen leer bleiben.",
+        "data": {
+          "base_url": "Route-Progress-URL",
+          "api_token": "Home-Assistant-API-Token",
+          "destination_entity": "Zielname-Entity (Pflicht)",
+          "destination_position_entity": "Zielpositions-Entity (Pflicht)",
+          "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
+          "update_interval": "Aktualisierungsintervall",
+          "heading_entity": "Fahrtrichtungs-Entity (optional)",
+          "speed_entity": "Geschwindigkeits-Entity (optional)",
+          "eta_entity": "ETA-Zeitstempel oder Minuten (optional)",
+          "distance_entity": "Reststrecken-Entity (optional)",
+          "traffic_delay_entity": "Verkehrsverzögerung (optional)",
+          "charging_minutes_entity": "Geplante Lademinuten (optional)",
+          "charging_entity": "Ladestatus-Entity (optional)",
+          "battery_at_arrival_entity": "Akku bei Ankunft (optional)"
+        },
+        "data_description": {
+          "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
+          "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
+          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit."
+        }
+      },
+      "reconfigure": {
+        "title": "Route Progress neu konfigurieren",
+        "description": "Ändere Verbindung, Quell-Entities oder Aktualisierungsintervall. Alle Pflicht-Entities müssen ausgewählt bleiben.",
+        "data": {
+          "base_url": "Route-Progress-URL",
+          "api_token": "Home-Assistant-API-Token",
+          "destination_entity": "Zielname-Entity (Pflicht)",
+          "destination_position_entity": "Zielpositions-Entity (Pflicht)",
+          "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
+          "update_interval": "Aktualisierungsintervall",
+          "heading_entity": "Fahrtrichtungs-Entity (optional)",
+          "speed_entity": "Geschwindigkeits-Entity (optional)",
+          "eta_entity": "ETA-Zeitstempel oder Minuten (optional)",
+          "distance_entity": "Reststrecken-Entity (optional)",
+          "traffic_delay_entity": "Verkehrsverzögerung (optional)",
+          "charging_minutes_entity": "Geplante Lademinuten (optional)",
+          "charging_entity": "Ladestatus-Entity (optional)",
+          "battery_at_arrival_entity": "Akku bei Ankunft (optional)"
+        },
+        "data_description": {
+          "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
+          "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
+          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Route Progress ist nicht erreichbar",
+      "invalid_auth": "Das Bearer-Token wurde abgelehnt",
+      "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
+      "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus"
+    },
+    "abort": {
+      "single_instance_allowed": "Route Progress ist bereits eingerichtet",
+      "reconfigure_successful": "Route Progress wurde erfolgreich neu konfiguriert"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Route Progress konfigurieren",
+        "description": "Ändere Verbindung, Quell-Entities oder Aktualisierungsintervall. Alle Pflicht-Entities müssen ausgewählt bleiben.",
+        "data": {
+          "base_url": "Route-Progress-URL",
+          "api_token": "Home-Assistant-API-Token",
+          "destination_entity": "Zielname-Entity (Pflicht)",
+          "destination_position_entity": "Zielpositions-Entity (Pflicht)",
+          "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
+          "update_interval": "Aktualisierungsintervall",
+          "heading_entity": "Fahrtrichtungs-Entity (optional)",
+          "speed_entity": "Geschwindigkeits-Entity (optional)",
+          "eta_entity": "ETA-Zeitstempel oder Minuten (optional)",
+          "distance_entity": "Reststrecken-Entity (optional)",
+          "traffic_delay_entity": "Verkehrsverzögerung (optional)",
+          "charging_minutes_entity": "Geplante Lademinuten (optional)",
+          "charging_entity": "Ladestatus-Entity (optional)",
+          "battery_at_arrival_entity": "Akku bei Ankunft (optional)"
+        },
+        "data_description": {
+          "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
+          "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
+          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Route Progress ist nicht erreichbar",
+      "invalid_auth": "Das Bearer-Token wurde abgelehnt",
+      "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
+      "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "share_url": {"name": "Freigabelink"}
+    },
+    "binary_sensor": {
+      "active": {"name": "Aktive Freigabe"}
+    },
+    "button": {
+      "finish": {"name": "Freigabe beenden"}
+    }
+  }
+}

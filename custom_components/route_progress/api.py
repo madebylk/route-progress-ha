@@ -1,0 +1,108 @@
+"""Asynchronous client for the Route Progress API."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from aiohttp import ClientError, ClientSession, ClientTimeout
+
+
+class RouteProgressAPIError(Exception):
+    """Base exception raised by the Route Progress API client."""
+
+
+class RouteProgressAuthError(RouteProgressAPIError):
+    """Raised when the configured bearer token is rejected."""
+
+
+class RouteProgressGoneError(RouteProgressAPIError):
+    """Raised when a trip has expired or has already been finished."""
+
+
+class RouteProgressAPI:
+    """Small aiohttp based client for the application API."""
+
+    def __init__(self, session: ClientSession, base_url: str, token: str) -> None:
+        """Initialize the API client."""
+        self._session = session
+        self.base_url = base_url.rstrip("/")
+        self._headers = {"Authorization": f"Bearer {token}"}
+        self._timeout = ClientTimeout(total=20)
+
+    async def async_check_auth(self) -> None:
+        """Validate connectivity and credentials without creating data."""
+        status, _ = await self._async_request(
+            "POST", "/api/v1/trips/ha-token-check/finish", expected={404}
+        )
+        if status != 404:
+            raise RouteProgressAPIError(f"Unexpected validation status {status}")
+
+    async def async_create_trip(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Create a trip and return its identifiers."""
+        _, content = await self._async_request(
+            "POST", "/api/v1/trips", expected={201}, json=payload
+        )
+        if not isinstance(content, dict):
+            raise RouteProgressAPIError("Create response is not a JSON object")
+        if not all(key in content for key in ("trip_id", "share_url", "expires_at")):
+            raise RouteProgressAPIError("Create response is missing required fields")
+        return content
+
+    async def async_update_trip(
+        self, trip_id: str, payload: dict[str, Any]
+    ) -> None:
+        """Update an active trip."""
+        await self._async_request(
+            "POST",
+            f"/api/v1/trips/{trip_id}/updates",
+            expected={204},
+            json=payload,
+        )
+
+    async def async_finish_trip(self, trip_id: str) -> None:
+        """Finish a trip; an already absent trip is considered finished."""
+        await self._async_request(
+            "POST",
+            f"/api/v1/trips/{trip_id}/finish",
+            expected={204, 404, 410},
+        )
+
+    async def _async_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        expected: set[int],
+        json: dict[str, Any] | None = None,
+    ) -> tuple[int, Any]:
+        """Send one request and normalize API errors."""
+        try:
+            async with self._session.request(
+                method,
+                f"{self.base_url}{path}",
+                headers=self._headers,
+                json=json,
+                timeout=self._timeout,
+            ) as response:
+                if response.status == 401:
+                    raise RouteProgressAuthError("Bearer token was rejected")
+                if response.status == 410:
+                    if 410 in expected:
+                        return response.status, None
+                    raise RouteProgressGoneError("Trip is no longer active")
+                if response.status not in expected:
+                    raise RouteProgressAPIError(
+                        f"Unexpected HTTP status {response.status}"
+                    )
+
+                if response.status == 204:
+                    return response.status, None
+                try:
+                    content = await response.json(content_type=None)
+                except (ValueError, ClientError):
+                    content = await response.text()
+                return response.status, content
+        except RouteProgressAPIError:
+            raise
+        except (ClientError, TimeoutError) as err:
+            raise RouteProgressAPIError("Could not connect to Route Progress") from err
