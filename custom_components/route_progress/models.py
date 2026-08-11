@@ -55,9 +55,18 @@ class TripSnapshot:
 
     def update_payload(self) -> dict[str, Any]:
         """Build an update payload, omitting unavailable optional values."""
-        payload: dict[str, Any] = {
-            "position": {"latitude": self.latitude, "longitude": self.longitude}
-        }
+        payload: dict[str, Any] = {}
+        if self.destination_valid:
+            payload["destination"] = {
+                "name": self.destination_name,
+                "latitude": self.destination_latitude,
+                "longitude": self.destination_longitude,
+            }
+        if self.position_valid:
+            payload["position"] = {
+                "latitude": self.latitude,
+                "longitude": self.longitude,
+            }
         optional = {
             "heading": self.heading,
             "speed_kmh": self.speed_kmh,

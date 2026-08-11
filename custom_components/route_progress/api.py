@@ -58,24 +58,52 @@ class RouteProgressAPI:
             raise RouteProgressAPIError("Create response is missing required fields")
         return content
 
+    async def async_get_trip(self, trip_id: str) -> dict[str, Any]:
+        """Get the server-owned lifecycle state for a trip."""
+        _, content = await self._async_request(
+            "GET", f"/api/v1/trips/{trip_id}", expected={200}
+        )
+        return self._require_state(content)
+
     async def async_update_trip(
         self, trip_id: str, payload: dict[str, Any]
-    ) -> None:
+    ) -> dict[str, Any]:
         """Update an active trip."""
-        await self._async_request(
+        _, content = await self._async_request(
             "POST",
             f"/api/v1/trips/{trip_id}/updates",
-            expected={204},
+            expected={200},
             json=payload,
         )
+        return self._require_state(content)
 
-    async def async_finish_trip(self, trip_id: str) -> None:
+    async def async_accept_destination(
+        self, trip_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Explicitly replace the destination of a shared trip."""
+        _, content = await self._async_request(
+            "POST",
+            f"/api/v1/trips/{trip_id}/destination",
+            expected={200},
+            json=payload,
+        )
+        return self._require_state(content)
+
+    async def async_finish_trip(self, trip_id: str) -> dict[str, Any] | None:
         """Finish a trip; an already absent trip is considered finished."""
-        await self._async_request(
+        status, content = await self._async_request(
             "POST",
             f"/api/v1/trips/{trip_id}/finish",
-            expected={204, 404, 410},
+            expected={200, 404, 410},
         )
+        return self._require_state(content) if status == 200 else None
+
+    @staticmethod
+    def _require_state(content: Any) -> dict[str, Any]:
+        """Validate a lifecycle response."""
+        if not isinstance(content, dict) or "status" not in content:
+            raise RouteProgressAPIError("Lifecycle response is invalid")
+        return content
 
     async def _async_request(
         self,

@@ -126,7 +126,20 @@
   },
   "entity": {
     "sensor": {
-      "share_url": {"name": "Share URL"}
+      "share_url": {"name": "Share URL"},
+      "share_status": {
+        "name": "Share status",
+        "state": {
+          "idle": "Idle",
+          "waiting_for_destination": "Waiting for navigation destination",
+          "confirming_destination": "Confirming navigation destination",
+          "en_route": "En route",
+          "destination_changed": "Navigation destination changed",
+          "arrived": "Arrived",
+          "manually_finished": "Manually finished",
+          "expired": "Expired"
+        }
+      }
     },
     "binary_sensor": {
       "active": {"name": "Active share"},
@@ -134,6 +147,7 @@
     },
     "button": {
       "start": {"name": "Start share"},
+      "accept_destination": {"name": "Accept new destination"},
       "finish": {"name": "Finish share"}
     }
   }

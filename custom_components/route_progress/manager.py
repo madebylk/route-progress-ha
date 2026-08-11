@@ -64,7 +64,10 @@ class RouteProgressManager:
         self.share_url: str | None = None
         self.expires_at: str | None = None
         self.destination_name: str | None = None
-        self.destination_key: str | None = None
+        self.status = "idle"
+        self.accepts_updates = False
+        self.arrived_at: str | None = None
+        self.finished_at: str | None = None
         self.last_successful_connection: datetime | None = None
         self.last_error: str | None = None
         self.available = True
@@ -79,13 +82,21 @@ class RouteProgressManager:
     @property
     def active(self) -> bool:
         """Return whether a trip is currently tracked."""
-        return self.trip_id is not None
+        return self.trip_id is not None and self.accepts_updates
 
     @property
     def can_start(self) -> bool:
-        """Return whether the current route data can start a trip."""
-        snapshot = self._snapshot()
-        return snapshot.destination_valid and snapshot.position_valid
+        """Return whether a waiting share can be created."""
+        return self.available and not self.active
+
+    @property
+    def can_accept_destination(self) -> bool:
+        """Return whether the currently observed destination can be accepted."""
+        return (
+            self.trip_id is not None
+            and self.status == "destination_changed"
+            and self._snapshot().destination_valid
+        )
 
     def record_connection_error(self, err: RouteProgressAPIError) -> None:
         """Record an API error detected while setting up the integration."""
@@ -98,14 +109,24 @@ class RouteProgressManager:
         self.share_url = _optional_string(data.get("share_url"))
         self.expires_at = _optional_string(data.get("expires_at"))
         self.destination_name = _optional_string(data.get("destination_name"))
-        self.destination_key = _optional_string(data.get("destination_key"))
+        self.status = _optional_string(data.get("status")) or (
+            "en_route" if self.trip_id else "idle"
+        )
+        self.accepts_updates = bool(
+            data.get("accepts_updates", self.trip_id is not None)
+        )
+        self.arrived_at = _optional_string(data.get("arrived_at"))
+        self.finished_at = _optional_string(data.get("finished_at"))
 
     async def async_start(self) -> None:
         """Start entity and interval listeners, then update restored state."""
-        destination_entity = self.config[CONF_DESTINATION_ENTITY]
+        destination_entities = [
+            self.config[CONF_DESTINATION_ENTITY],
+            self.config[CONF_DESTINATION_POSITION_ENTITY],
+        ]
         self._unsubscribers.append(
             async_track_state_change_event(
-                self.hass, [destination_entity], self._async_destination_changed
+                self.hass, destination_entities, self._async_destination_changed
             )
         )
         interval = int(self.config.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
@@ -114,6 +135,8 @@ class RouteProgressManager:
                 self.hass, self._async_interval, timedelta(seconds=interval)
             )
         )
+        if self.trip_id:
+            await self._async_refresh_state()
         await self.async_sync()
 
     async def async_stop(self) -> None:
@@ -138,14 +161,10 @@ class RouteProgressManager:
         async with self._lock:
             snapshot = self._snapshot()
 
-            if not self.active:
+            if self.trip_id is None:
                 await self._async_check_connection()
                 return
-
-            if snapshot.destination_key != self.destination_key:
-                await self._async_finish()
-                return
-            if snapshot.position_valid:
+            if self.accepts_updates:
                 await self._async_update(snapshot)
                 return
             await self._async_check_connection()
@@ -156,9 +175,33 @@ class RouteProgressManager:
             if self.active:
                 return
             snapshot = self._snapshot()
-            if not snapshot.destination_valid or not snapshot.position_valid:
-                return
             await self._async_create(snapshot)
+
+    async def async_accept_destination(self) -> None:
+        """Explicitly replace the server-owned shared destination."""
+        async with self._lock:
+            if not self.trip_id:
+                return
+            snapshot = self._snapshot()
+            if not snapshot.destination_valid:
+                return
+            try:
+                result = await self.api.async_accept_destination(
+                    self.trip_id,
+                    snapshot.create_payload()["destination"],
+                )
+            except RouteProgressGoneError:
+                await self._async_clear("expired")
+                return
+            except RouteProgressAPIError as err:
+                self._mark_error(err)
+                return
+            self._apply_server_state(result)
+            self._mark_success()
+            if self.accepts_updates:
+                await self._async_update(snapshot)
+                return
+            await self._async_save_and_notify()
 
     async def async_manual_stop(self) -> None:
         """Finish the active trip from the HA button entity."""
@@ -170,7 +213,7 @@ class RouteProgressManager:
     async def _async_create(self, snapshot: TripSnapshot) -> None:
         """Create and persist a new trip."""
         try:
-            result = await self.api.async_create_trip(snapshot.create_payload())
+            result = await self.api.async_create_trip({})
         except RouteProgressAPIError as err:
             self._mark_error(err)
             return
@@ -178,11 +221,10 @@ class RouteProgressManager:
         self.trip_id = str(result["trip_id"])
         self.share_url = str(result["share_url"])
         self.expires_at = str(result["expires_at"])
-        self.destination_name = snapshot.destination_name
-        self.destination_key = snapshot.destination_key
+        self._apply_server_state(result)
         self._mark_success()
         await self._async_save_and_notify()
-        _LOGGER.info("Created Route Progress trip for %s", snapshot.destination_name)
+        _LOGGER.info("Created waiting Route Progress share")
 
     async def _async_check_connection(self) -> None:
         """Check API connectivity without creating or changing a trip."""
@@ -194,41 +236,63 @@ class RouteProgressManager:
         self._mark_success()
         self._notify_listeners()
 
+    async def _async_refresh_state(self) -> None:
+        """Reconcile restored local state with the authoritative backend."""
+        if not self.trip_id:
+            return
+        try:
+            result = await self.api.async_get_trip(self.trip_id)
+        except RouteProgressGoneError:
+            await self._async_clear("expired")
+            return
+        except RouteProgressAPIError as err:
+            self._mark_error(err)
+            return
+        self._apply_server_state(result)
+        self._mark_success()
+        await self._async_save_and_notify()
+
     async def _async_update(self, snapshot: TripSnapshot) -> None:
         """Send current route values for the active trip."""
         if not self.trip_id:
             return
         try:
-            await self.api.async_update_trip(
+            result = await self.api.async_update_trip(
                 self.trip_id, snapshot.update_payload()
             )
         except RouteProgressGoneError:
-            await self._async_clear()
+            await self._async_clear("expired")
             return
         except RouteProgressAPIError as err:
             self._mark_error(err)
             return
+        self._apply_server_state(result)
         self._mark_success()
-        self._notify_listeners()
+        await self._async_save_and_notify()
 
     async def _async_finish(self) -> None:
         """Finish the active trip."""
         if not self.trip_id:
             return
         try:
-            await self.api.async_finish_trip(self.trip_id)
+            result = await self.api.async_finish_trip(self.trip_id)
         except RouteProgressAPIError as err:
             self._mark_error(err)
             return
+        if result:
+            self._apply_server_state(result)
+        else:
+            await self._async_clear("expired")
+            return
+        self._mark_success()
         _LOGGER.info("Finished Route Progress trip")
-        await self._async_clear()
+        await self._async_save_and_notify()
 
-    async def _async_clear(self) -> None:
+    async def _async_clear(self, status: str = "idle") -> None:
         """Clear active state while retaining the last share URL."""
         self.trip_id = None
-        self.expires_at = None
-        self.destination_name = None
-        self.destination_key = None
+        self.status = status
+        self.accepts_updates = False
         self._mark_success()
         await self._async_save_and_notify()
 
@@ -240,10 +304,22 @@ class RouteProgressManager:
                 "share_url": self.share_url,
                 "expires_at": self.expires_at,
                 "destination_name": self.destination_name,
-                "destination_key": self.destination_key,
+                "status": self.status,
+                "accepts_updates": self.accepts_updates,
+                "arrived_at": self.arrived_at,
+                "finished_at": self.finished_at,
             }
         )
         self._notify_listeners()
+
+    def _apply_server_state(self, data: dict[str, Any]) -> None:
+        """Adopt lifecycle facts decided by the backend."""
+        self.status = str(data.get("status") or self.status)
+        self.accepts_updates = bool(data.get("accepts_updates", False))
+        self.destination_name = _optional_string(data.get("destination_name"))
+        self.expires_at = _optional_string(data.get("expires_at")) or self.expires_at
+        self.arrived_at = _optional_string(data.get("arrived_at"))
+        self.finished_at = _optional_string(data.get("finished_at"))
 
     def _snapshot(self) -> TripSnapshot:
         """Collect a consistent snapshot from configured HA entities."""

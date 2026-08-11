@@ -126,7 +126,20 @@
   },
   "entity": {
     "sensor": {
-      "share_url": {"name": "Freigabelink"}
+      "share_url": {"name": "Freigabelink"},
+      "share_status": {
+        "name": "Freigabestatus",
+        "state": {
+          "idle": "Inaktiv",
+          "waiting_for_destination": "Wartet auf Navigationsziel",
+          "confirming_destination": "Navigationsziel wird bestätigt",
+          "en_route": "Unterwegs",
+          "destination_changed": "Navigationsziel wurde geändert",
+          "arrived": "Angekommen",
+          "manually_finished": "Manuell beendet",
+          "expired": "Abgelaufen"
+        }
+      }
     },
     "binary_sensor": {
       "active": {"name": "Aktive Freigabe"},
@@ -134,6 +147,7 @@
     },
     "button": {
       "start": {"name": "Freigabe starten"},
+      "accept_destination": {"name": "Neues Ziel übernehmen"},
       "finish": {"name": "Freigabe beenden"}
     }
   }

@@ -56,24 +56,35 @@ optional und es werden keine Cloudflare-Access-Header gesendet.
 
 ## Verhalten
 
-Sobald ein gültiges Ziel und eine Fahrzeugposition vorliegen, kann die Fahrt mit
-dem Button `button.route_progress_start_share` manuell gestartet werden. Die
-Integration speichert die zurückgelieferte Share-URL und sendet danach
-fortlaufend Updates. Ändert sich der Zielname oder die Zielposition, wird die
-laufende Freigabe beendet. Ohne Betätigung des Buttons wird keine Freigabe
-erstellt. Die Verbindung zum Route-Progress-Dienst wird auch ohne aktive
-Freigabe im konfigurierten Aktualisierungsintervall geprüft.
+Der Button `button.route_progress_start_share` erzeugt sofort einen teilbaren
+Link. Ein Ziel oder eine Fahrzeugposition werden dafür noch nicht benötigt. Das
+Backend übernimmt das erste mindestens 60 Sekunden stabile Navigationsziel,
+erkennt Zielabweichungen und bestätigt die Ankunft nach zwei Positionen innerhalb
+von 300 Metern um das Freigabeziel.
+
+Bei einem abweichenden Navigationsziel friert der Server die öffentlich sichtbare
+Route ein. Kehrt das ursprüngliche Ziel zurück, wird die Fahrt automatisch
+fortgesetzt. Mit `button.route_progress_accept_destination` kann ein neues Ziel
+bewusst übernommen werden. Nach Ankunft oder manuellem Beenden werden keine
+weiteren Fahrtdaten gesendet; der Link bleibt bis zu seinem Ablauf erreichbar.
+
+Die Integration trifft keine eigenen Entscheidungen über den Fahrtverlauf. Sie
+übermittelt Home-Assistant-Snapshots und stellt den vom Backend gelieferten
+Lebenszyklusstatus dar. Ohne Betätigung des Start-Buttons wird keine Freigabe
+erstellt.
 
 Die Integration stellt folgende Entities bereit:
 
 - `sensor.route_progress_share_url`
+- `sensor.route_progress_share_status`
 - `binary_sensor.route_progress_active_share`
 - `binary_sensor.route_progress_cloud_connection` (Diagnose)
 - `button.route_progress_start_share`
+- `button.route_progress_accept_destination`
 - `button.route_progress_finish_share`
 
-Fahrt-ID, Zielkennung und Share-URL werden im Home-Assistant-Speicher persistiert.
-Das API-Token bleibt ausschließlich im Config Entry.
+Fahrt-ID, Serverstatus und Share-URL werden im Home-Assistant-Speicher
+persistiert. Das API-Token bleibt ausschließlich im Config Entry.
 
 ## Releases
 
