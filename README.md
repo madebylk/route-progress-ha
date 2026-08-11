@@ -5,8 +5,8 @@
 
 Eine HACS-kompatible Home-Assistant-Custom-Integration für den selbst gehosteten
 Route-Progress-Dienst. Sie erstellt
-bei gesetztem Navigationsziel automatisch einen Freigabelink, übermittelt den
-Routenfortschritt und beendet die Freigabe bei einem Zielwechsel.
+auf Knopfdruck einen Freigabelink, übermittelt den Routenfortschritt und beendet
+die Freigabe bei einem Zielwechsel.
 
 ## Installation
 
@@ -56,15 +56,18 @@ optional und es werden keine Cloudflare-Access-Header gesendet.
 
 ## Verhalten
 
-Sobald ein gültiges Ziel und eine Fahrzeugposition vorliegen, erstellt die
-Integration eine Fahrt und speichert die zurückgelieferte Share-URL. Danach
-sendet sie fortlaufend Updates. Ändert sich der Zielname oder die Zielposition,
-wird die laufende Freigabe beendet.
+Sobald ein gültiges Ziel und eine Fahrzeugposition vorliegen, kann die Fahrt mit
+dem Button `button.route_progress_start_share` manuell gestartet werden. Die
+Integration speichert die zurückgelieferte Share-URL und sendet danach
+fortlaufend Updates. Ändert sich der Zielname oder die Zielposition, wird die
+laufende Freigabe beendet. Ohne Betätigung des Buttons wird keine Freigabe
+erstellt.
 
 Die Integration stellt folgende Entities bereit:
 
 - `sensor.route_progress_share_url`
 - `binary_sensor.route_progress_active_share`
+- `button.route_progress_start_share`
 - `button.route_progress_finish_share`
 
 Fahrt-ID, Zielkennung und Share-URL werden im Home-Assistant-Speicher persistiert.

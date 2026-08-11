@@ -119,6 +119,11 @@
       "required_entity": "Select an entity for this required field"
     }
   },
+  "exceptions": {
+    "route_data_required": {
+      "message": "A valid destination and vehicle position are required before a share can be started."
+    }
+  },
   "entity": {
     "sensor": {
       "share_url": {"name": "Share URL"}
@@ -127,6 +132,7 @@
       "active": {"name": "Active share"}
     },
     "button": {
+      "start": {"name": "Start share"},
       "finish": {"name": "Finish share"}
     }
   }

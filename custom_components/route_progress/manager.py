@@ -1,4 +1,4 @@
-"""Automatic trip lifecycle management for Route Progress."""
+"""Trip lifecycle management for Route Progress."""
 
 from __future__ import annotations
 
@@ -65,7 +65,6 @@ class RouteProgressManager:
         self.expires_at: str | None = None
         self.destination_name: str | None = None
         self.destination_key: str | None = None
-        self.stopped_destination_key: str | None = None
         self.last_error: str | None = None
         self.available = True
 
@@ -81,6 +80,12 @@ class RouteProgressManager:
         """Return whether a trip is currently tracked."""
         return self.trip_id is not None
 
+    @property
+    def can_start(self) -> bool:
+        """Return whether the current route data can start a trip."""
+        snapshot = self._snapshot()
+        return snapshot.destination_valid and snapshot.position_valid
+
     async def async_load(self) -> None:
         """Restore the active trip state after a HA restart."""
         data = await self._store.async_load() or {}
@@ -89,12 +94,8 @@ class RouteProgressManager:
         self.expires_at = _optional_string(data.get("expires_at"))
         self.destination_name = _optional_string(data.get("destination_name"))
         self.destination_key = _optional_string(data.get("destination_key"))
-        self.stopped_destination_key = _optional_string(
-            data.get("stopped_destination_key")
-        )
-
     async def async_start(self) -> None:
-        """Start entity and interval listeners, then perform an initial sync."""
+        """Start entity and interval listeners, then update restored state."""
         destination_entity = self.config[CONF_DESTINATION_ENTITY]
         self._unsubscribers.append(
             async_track_state_change_event(
@@ -107,7 +108,7 @@ class RouteProgressManager:
                 self.hass, self._async_interval, timedelta(seconds=interval)
             )
         )
-        await self.async_sync(allow_create=True)
+        await self.async_sync()
 
     async def async_stop(self) -> None:
         """Unregister listeners without ending a remotely active trip."""
@@ -126,33 +127,36 @@ class RouteProgressManager:
 
         return remove_listener
 
-    async def async_sync(self, *, allow_create: bool) -> None:
-        """Create, update, or finish the trip based on current HA state."""
+    async def async_sync(self) -> None:
+        """Update or finish an active trip based on current HA state."""
         async with self._lock:
             snapshot = self._snapshot()
 
-            if self.active:
-                if snapshot.destination_key != self.destination_key:
-                    await self._async_finish(snapshot.destination_key)
-                    return
-                if snapshot.position_valid:
-                    await self._async_update(snapshot)
+            if not self.active:
                 return
 
-            if (
-                allow_create
-                and snapshot.destination_valid
-                and snapshot.position_valid
-                and snapshot.destination_key != self.stopped_destination_key
-            ):
-                await self._async_create(snapshot)
+            if snapshot.destination_key != self.destination_key:
+                await self._async_finish()
+                return
+            if snapshot.position_valid:
+                await self._async_update(snapshot)
+
+    async def async_manual_start(self) -> None:
+        """Create a trip after the Home Assistant start button is pressed."""
+        async with self._lock:
+            if self.active:
+                return
+            snapshot = self._snapshot()
+            if not snapshot.destination_valid or not snapshot.position_valid:
+                return
+            await self._async_create(snapshot)
 
     async def async_manual_stop(self) -> None:
         """Finish the active trip from the HA button entity."""
         async with self._lock:
             if not self.trip_id:
                 return
-            await self._async_finish(self._snapshot().destination_key)
+            await self._async_finish()
 
     async def _async_create(self, snapshot: TripSnapshot) -> None:
         """Create and persist a new trip."""
@@ -167,7 +171,6 @@ class RouteProgressManager:
         self.expires_at = str(result["expires_at"])
         self.destination_name = snapshot.destination_name
         self.destination_key = snapshot.destination_key
-        self.stopped_destination_key = None
         self._mark_success()
         await self._async_save_and_notify()
         _LOGGER.info("Created Route Progress trip for %s", snapshot.destination_name)
@@ -181,7 +184,7 @@ class RouteProgressManager:
                 self.trip_id, snapshot.update_payload()
             )
         except RouteProgressGoneError:
-            await self._async_clear(snapshot.destination_key)
+            await self._async_clear()
             return
         except RouteProgressAPIError as err:
             self._mark_error(err)
@@ -189,8 +192,8 @@ class RouteProgressManager:
         self._mark_success()
         self._notify_listeners()
 
-    async def _async_finish(self, stopped_key: str) -> None:
-        """Finish the active trip and prevent recreation for the same target."""
+    async def _async_finish(self) -> None:
+        """Finish the active trip."""
         if not self.trip_id:
             return
         try:
@@ -199,15 +202,14 @@ class RouteProgressManager:
             self._mark_error(err)
             return
         _LOGGER.info("Finished Route Progress trip")
-        await self._async_clear(stopped_key)
+        await self._async_clear()
 
-    async def _async_clear(self, stopped_key: str) -> None:
+    async def _async_clear(self) -> None:
         """Clear active state while retaining the last share URL."""
         self.trip_id = None
         self.expires_at = None
         self.destination_name = None
         self.destination_key = None
-        self.stopped_destination_key = stopped_key
         self._mark_success()
         await self._async_save_and_notify()
 
@@ -220,7 +222,6 @@ class RouteProgressManager:
                 "expires_at": self.expires_at,
                 "destination_name": self.destination_name,
                 "destination_key": self.destination_key,
-                "stopped_destination_key": self.stopped_destination_key,
             }
         )
         self._notify_listeners()
@@ -301,11 +302,11 @@ class RouteProgressManager:
 
     async def _async_destination_changed(self, _event: Event) -> None:
         """React immediately when destination state or attributes change."""
-        await self.async_sync(allow_create=True)
+        await self.async_sync()
 
     async def _async_interval(self, _now: datetime) -> None:
-        """Update a trip, or retry a create that previously failed."""
-        await self.async_sync(allow_create=self.last_error is not None)
+        """Update an active trip."""
+        await self.async_sync()
 
     def _mark_error(self, err: Exception) -> None:
         """Record an API failure without losing persisted trip data."""
