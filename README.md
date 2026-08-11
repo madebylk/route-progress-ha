@@ -47,6 +47,13 @@ Zusätzlich werden die öffentliche Route-Progress-URL, der in
 den Zugangsdaten konfigurierte Bearer-Token und ein
 Aktualisierungsintervall zwischen 10 und 300 Sekunden benötigt.
 
+Ist `/api/v1` zusätzlich durch Cloudflare Access geschützt, kann im Dialog
+**Cloudflare Access verwenden** aktiviert werden. Die Integration fordert dann
+die Client-ID und das Client-Secret eines Cloudflare Access Service-Tokens an
+und sendet sie bei allen API-Aufrufen als `CF-Access-Client-Id` und
+`CF-Access-Client-Secret`. Ohne aktivierten Schalter bleiben beide Angaben
+optional und es werden keine Cloudflare-Access-Header gesendet.
+
 ## Verhalten
 
 Sobald ein gültiges Ziel und eine Fahrzeugposition vorliegen, erstellt die

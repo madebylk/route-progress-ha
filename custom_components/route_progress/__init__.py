@@ -10,7 +10,14 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import RouteProgressAPI, RouteProgressAPIError, RouteProgressAuthError
-from .const import CONF_API_TOKEN, CONF_BASE_URL, PLATFORMS
+from .const import (
+    CONF_API_TOKEN,
+    CONF_BASE_URL,
+    CONF_CLOUDFLARE_ACCESS_ENABLED,
+    CONF_CLOUDFLARE_CLIENT_ID,
+    CONF_CLOUDFLARE_CLIENT_SECRET,
+    PLATFORMS,
+)
 from .manager import RouteProgressManager
 
 
@@ -21,6 +28,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_get_clientsession(hass),
         config[CONF_BASE_URL],
         config[CONF_API_TOKEN],
+        config.get(CONF_CLOUDFLARE_CLIENT_ID)
+        if config.get(CONF_CLOUDFLARE_ACCESS_ENABLED)
+        else None,
+        config.get(CONF_CLOUDFLARE_CLIENT_SECRET)
+        if config.get(CONF_CLOUDFLARE_ACCESS_ENABLED)
+        else None,
     )
     try:
         await api.async_check_auth()

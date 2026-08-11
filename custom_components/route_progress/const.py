@@ -7,6 +7,9 @@ PLATFORMS = ["binary_sensor", "button", "sensor"]
 
 CONF_API_TOKEN = "api_token"
 CONF_BASE_URL = "base_url"
+CONF_CLOUDFLARE_ACCESS_ENABLED = "cloudflare_access_enabled"
+CONF_CLOUDFLARE_CLIENT_ID = "cloudflare_client_id"
+CONF_CLOUDFLARE_CLIENT_SECRET = "cloudflare_client_secret"
 CONF_UPDATE_INTERVAL = "update_interval"
 
 CONF_DESTINATION_ENTITY = "destination_entity"

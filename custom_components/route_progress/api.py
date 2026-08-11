@@ -22,11 +22,25 @@ class RouteProgressGoneError(RouteProgressAPIError):
 class RouteProgressAPI:
     """Small aiohttp based client for the application API."""
 
-    def __init__(self, session: ClientSession, base_url: str, token: str) -> None:
+    def __init__(
+        self,
+        session: ClientSession,
+        base_url: str,
+        token: str,
+        cloudflare_client_id: str | None = None,
+        cloudflare_client_secret: str | None = None,
+    ) -> None:
         """Initialize the API client."""
         self._session = session
         self.base_url = base_url.rstrip("/")
         self._headers = {"Authorization": f"Bearer {token}"}
+        if cloudflare_client_id and cloudflare_client_secret:
+            self._headers.update(
+                {
+                    "CF-Access-Client-Id": cloudflare_client_id,
+                    "CF-Access-Client-Secret": cloudflare_client_secret,
+                }
+            )
         self._timeout = ClientTimeout(total=20)
 
     async def async_check_auth(self) -> None:
@@ -84,8 +98,8 @@ class RouteProgressAPI:
                 json=json,
                 timeout=self._timeout,
             ) as response:
-                if response.status == 401:
-                    raise RouteProgressAuthError("Bearer token was rejected")
+                if response.status in {401, 403}:
+                    raise RouteProgressAuthError("API credentials were rejected")
                 if response.status == 410:
                     if 410 in expected:
                         return response.status, None

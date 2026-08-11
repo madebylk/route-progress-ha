@@ -8,6 +8,9 @@
         "data": {
           "base_url": "Route-Progress-URL",
           "api_token": "Home-Assistant-API-Token",
+          "cloudflare_access_enabled": "Cloudflare Access verwenden",
+          "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
+          "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
           "destination_entity": "Zielname-Entity (Pflicht)",
           "destination_position_entity": "Zielpositions-Entity (Pflicht)",
           "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
@@ -24,7 +27,10 @@
         "data_description": {
           "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
           "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
-          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit."
+          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit.",
+          "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
+          "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
+          "cloudflare_client_secret": "Erforderlich, wenn Cloudflare Access aktiviert ist."
         }
       },
       "reconfigure": {
@@ -33,6 +39,9 @@
         "data": {
           "base_url": "Route-Progress-URL",
           "api_token": "Home-Assistant-API-Token",
+          "cloudflare_access_enabled": "Cloudflare Access verwenden",
+          "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
+          "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
           "destination_entity": "Zielname-Entity (Pflicht)",
           "destination_position_entity": "Zielpositions-Entity (Pflicht)",
           "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
@@ -49,13 +58,17 @@
         "data_description": {
           "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
           "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
-          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit."
+          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit.",
+          "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
+          "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
+          "cloudflare_client_secret": "Erforderlich, wenn Cloudflare Access aktiviert ist."
         }
       }
     },
     "error": {
       "cannot_connect": "Route Progress ist nicht erreichbar",
-      "invalid_auth": "Das Bearer-Token wurde abgelehnt",
+      "cloudflare_credentials_required": "Gib die Cloudflare Access Client-ID und das Client-Secret ein",
+      "invalid_auth": "Das Home-Assistant-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
       "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
       "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus"
     },
@@ -72,6 +85,9 @@
         "data": {
           "base_url": "Route-Progress-URL",
           "api_token": "Home-Assistant-API-Token",
+          "cloudflare_access_enabled": "Cloudflare Access verwenden",
+          "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
+          "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
           "destination_entity": "Zielname-Entity (Pflicht)",
           "destination_position_entity": "Zielpositions-Entity (Pflicht)",
           "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
@@ -88,13 +104,17 @@
         "data_description": {
           "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
           "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
-          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit."
+          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit.",
+          "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
+          "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
+          "cloudflare_client_secret": "Erforderlich, wenn Cloudflare Access aktiviert ist."
         }
       }
     },
     "error": {
       "cannot_connect": "Route Progress ist nicht erreichbar",
-      "invalid_auth": "Das Bearer-Token wurde abgelehnt",
+      "cloudflare_credentials_required": "Gib die Cloudflare Access Client-ID und das Client-Secret ein",
+      "invalid_auth": "Das Home-Assistant-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
       "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
       "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus"
     }

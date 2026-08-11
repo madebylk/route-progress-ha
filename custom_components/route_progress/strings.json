@@ -8,6 +8,9 @@
         "data": {
           "base_url": "Route Progress URL",
           "api_token": "Home Assistant API token",
+          "cloudflare_access_enabled": "Use Cloudflare Access",
+          "cloudflare_client_id": "Cloudflare Access Client ID (optional)",
+          "cloudflare_client_secret": "Cloudflare Access Client Secret (optional)",
           "destination_entity": "Destination name entity (required)",
           "destination_position_entity": "Destination position entity (required)",
           "vehicle_position_entity": "Vehicle position entity (required)",
@@ -24,7 +27,10 @@
         "data_description": {
           "destination_entity": "Its state contains the destination name.",
           "destination_position_entity": "It provides destination latitude and longitude attributes.",
-          "vehicle_position_entity": "It provides the current vehicle latitude and longitude attributes."
+          "vehicle_position_entity": "It provides the current vehicle latitude and longitude attributes.",
+          "cloudflare_access_enabled": "Enable this when /api/v1 is protected by a Cloudflare Access service token.",
+          "cloudflare_client_id": "Required when Cloudflare Access is enabled.",
+          "cloudflare_client_secret": "Required when Cloudflare Access is enabled."
         }
       },
       "reconfigure": {
@@ -33,6 +39,9 @@
         "data": {
           "base_url": "Route Progress URL",
           "api_token": "Home Assistant API token",
+          "cloudflare_access_enabled": "Use Cloudflare Access",
+          "cloudflare_client_id": "Cloudflare Access Client ID (optional)",
+          "cloudflare_client_secret": "Cloudflare Access Client Secret (optional)",
           "destination_entity": "Destination name entity (required)",
           "destination_position_entity": "Destination position entity (required)",
           "vehicle_position_entity": "Vehicle position entity (required)",
@@ -49,13 +58,17 @@
         "data_description": {
           "destination_entity": "Its state contains the destination name.",
           "destination_position_entity": "It provides destination latitude and longitude attributes.",
-          "vehicle_position_entity": "It provides the current vehicle latitude and longitude attributes."
+          "vehicle_position_entity": "It provides the current vehicle latitude and longitude attributes.",
+          "cloudflare_access_enabled": "Enable this when /api/v1 is protected by a Cloudflare Access service token.",
+          "cloudflare_client_id": "Required when Cloudflare Access is enabled.",
+          "cloudflare_client_secret": "Required when Cloudflare Access is enabled."
         }
       }
     },
     "error": {
       "cannot_connect": "Could not connect to Route Progress",
-      "invalid_auth": "The bearer token was rejected",
+      "cloudflare_credentials_required": "Enter the Cloudflare Access Client ID and Client Secret",
+      "invalid_auth": "The Home Assistant token or Cloudflare Access credentials were rejected",
       "invalid_url": "Enter a valid HTTP or HTTPS URL",
       "required_entity": "Select an entity for this required field"
     },
@@ -72,6 +85,9 @@
         "data": {
           "base_url": "Route Progress URL",
           "api_token": "Home Assistant API token",
+          "cloudflare_access_enabled": "Use Cloudflare Access",
+          "cloudflare_client_id": "Cloudflare Access Client ID (optional)",
+          "cloudflare_client_secret": "Cloudflare Access Client Secret (optional)",
           "destination_entity": "Destination name entity (required)",
           "destination_position_entity": "Destination position entity (required)",
           "vehicle_position_entity": "Vehicle position entity (required)",
@@ -88,13 +104,17 @@
         "data_description": {
           "destination_entity": "Its state contains the destination name.",
           "destination_position_entity": "It provides destination latitude and longitude attributes.",
-          "vehicle_position_entity": "It provides the current vehicle latitude and longitude attributes."
+          "vehicle_position_entity": "It provides the current vehicle latitude and longitude attributes.",
+          "cloudflare_access_enabled": "Enable this when /api/v1 is protected by a Cloudflare Access service token.",
+          "cloudflare_client_id": "Required when Cloudflare Access is enabled.",
+          "cloudflare_client_secret": "Required when Cloudflare Access is enabled."
         }
       }
     },
     "error": {
       "cannot_connect": "Could not connect to Route Progress",
-      "invalid_auth": "The bearer token was rejected",
+      "cloudflare_credentials_required": "Enter the Cloudflare Access Client ID and Client Secret",
+      "invalid_auth": "The Home Assistant token or Cloudflare Access credentials were rejected",
       "invalid_url": "Enter a valid HTTP or HTTPS URL",
       "required_entity": "Select an entity for this required field"
     }

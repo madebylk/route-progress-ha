@@ -17,6 +17,9 @@ from .api import RouteProgressAPI, RouteProgressAPIError, RouteProgressAuthError
 from .const import (
     CONF_API_TOKEN,
     CONF_BASE_URL,
+    CONF_CLOUDFLARE_ACCESS_ENABLED,
+    CONF_CLOUDFLARE_CLIENT_ID,
+    CONF_CLOUDFLARE_CLIENT_SECRET,
     CONF_DESTINATION_ENTITY,
     CONF_DESTINATION_POSITION_ENTITY,
     CONF_UPDATE_INTERVAL,
@@ -92,10 +95,22 @@ class RouteProgressConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             return {CONF_BASE_URL: "invalid_url"}
 
+        if data.get(CONF_CLOUDFLARE_ACCESS_ENABLED) and (
+            not data.get(CONF_CLOUDFLARE_CLIENT_ID)
+            or not data.get(CONF_CLOUDFLARE_CLIENT_SECRET)
+        ):
+            return {"base": "cloudflare_credentials_required"}
+
         api = RouteProgressAPI(
             async_get_clientsession(self.hass),
             str(data[CONF_BASE_URL]),
             str(data[CONF_API_TOKEN]),
+            str(data.get(CONF_CLOUDFLARE_CLIENT_ID, ""))
+            if data.get(CONF_CLOUDFLARE_ACCESS_ENABLED)
+            else None,
+            str(data.get(CONF_CLOUDFLARE_CLIENT_SECRET, ""))
+            if data.get(CONF_CLOUDFLARE_ACCESS_ENABLED)
+            else None,
         )
         try:
             await api.async_check_auth()
@@ -128,6 +143,11 @@ class RouteProgressOptionsFlow(config_entries.OptionsFlow):
                 key for key in REQUIRED_ENTITY_KEYS if not user_input.get(key)
             ]
             errors.update({key: "required_entity" for key in missing_entities})
+            if user_input.get(CONF_CLOUDFLARE_ACCESS_ENABLED) and (
+                not user_input.get(CONF_CLOUDFLARE_CLIENT_ID)
+                or not user_input.get(CONF_CLOUDFLARE_CLIENT_SECRET)
+            ):
+                errors["base"] = "cloudflare_credentials_required"
             if not errors:
                 parsed = urlparse(str(user_input[CONF_BASE_URL]))
                 if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -137,6 +157,12 @@ class RouteProgressOptionsFlow(config_entries.OptionsFlow):
                         async_get_clientsession(self.hass),
                         str(user_input[CONF_BASE_URL]),
                         str(user_input[CONF_API_TOKEN]),
+                        str(user_input.get(CONF_CLOUDFLARE_CLIENT_ID, ""))
+                        if user_input.get(CONF_CLOUDFLARE_ACCESS_ENABLED)
+                        else None,
+                        str(user_input.get(CONF_CLOUDFLARE_CLIENT_SECRET, ""))
+                        if user_input.get(CONF_CLOUDFLARE_ACCESS_ENABLED)
+                        else None,
                     )
                     try:
                         await api.async_check_auth()
@@ -193,6 +219,22 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             ): selector.TextSelector(
                 selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
             ),
+            vol.Required(
+                CONF_CLOUDFLARE_ACCESS_ENABLED,
+                default=defaults.get(CONF_CLOUDFLARE_ACCESS_ENABLED, False),
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                CONF_CLOUDFLARE_CLIENT_ID,
+                default=defaults.get(CONF_CLOUDFLARE_CLIENT_ID, ""),
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
+            vol.Optional(
+                CONF_CLOUDFLARE_CLIENT_SECRET,
+                default=defaults.get(CONF_CLOUDFLARE_CLIENT_SECRET, ""),
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
             destination_marker: entity,
             destination_position_marker: entity,
             vehicle_position_marker: entity,
@@ -224,6 +266,12 @@ def _clean_input(data: dict[str, Any]) -> dict[str, Any]:
     cleaned = dict(data)
     cleaned[CONF_BASE_URL] = str(cleaned[CONF_BASE_URL]).rstrip("/")
     cleaned[CONF_UPDATE_INTERVAL] = int(cleaned[CONF_UPDATE_INTERVAL])
+    cleaned[CONF_CLOUDFLARE_ACCESS_ENABLED] = bool(
+        cleaned.get(CONF_CLOUDFLARE_ACCESS_ENABLED)
+    )
+    if not cleaned[CONF_CLOUDFLARE_ACCESS_ENABLED]:
+        cleaned.pop(CONF_CLOUDFLARE_CLIENT_ID, None)
+        cleaned.pop(CONF_CLOUDFLARE_CLIENT_SECRET, None)
     for key in OPTIONAL_ENTITY_KEYS:
         if not cleaned.get(key):
             cleaned.pop(key, None)
