@@ -67,6 +67,8 @@ class RouteProgressManager:
         self.status = "idle"
         self.accepts_updates = False
         self.arrived_at: str | None = None
+        self.arrival_detection: str | None = None
+        self.arrival_followup_until: str | None = None
         self.finished_at: str | None = None
         self.last_successful_connection: datetime | None = None
         self.last_error: str | None = None
@@ -78,6 +80,8 @@ class RouteProgressManager:
         self._listeners: set[Callable[[], None]] = set()
         self._unsubscribers: list[Callable[[], None]] = []
         self._lock = asyncio.Lock()
+        self._last_sent_position: tuple[float, float] | None = None
+        self._last_observed_speed: float | None = None
 
     @property
     def active(self) -> bool:
@@ -116,6 +120,10 @@ class RouteProgressManager:
             data.get("accepts_updates", self.trip_id is not None)
         )
         self.arrived_at = _optional_string(data.get("arrived_at"))
+        self.arrival_detection = _optional_string(data.get("arrival_detection"))
+        self.arrival_followup_until = _optional_string(
+            data.get("arrival_followup_until")
+        )
         self.finished_at = _optional_string(data.get("finished_at"))
 
     async def async_start(self) -> None:
@@ -165,7 +173,13 @@ class RouteProgressManager:
                 await self._async_check_connection()
                 return
             if self.accepts_updates:
-                await self._async_update(snapshot)
+                if self._has_new_position(snapshot):
+                    await self._async_update(snapshot)
+                    return
+                if self.arrival_detection is not None:
+                    await self._async_update(snapshot, arrival_observation=True)
+                    return
+                await self._async_check_connection()
                 return
             await self._async_check_connection()
 
@@ -198,9 +212,6 @@ class RouteProgressManager:
                 return
             self._apply_server_state(result)
             self._mark_success()
-            if self.accepts_updates:
-                await self._async_update(snapshot)
-                return
             await self._async_save_and_notify()
 
     async def async_manual_stop(self) -> None:
@@ -221,6 +232,8 @@ class RouteProgressManager:
         self.trip_id = str(result["trip_id"])
         self.share_url = str(result["share_url"])
         self.expires_at = str(result["expires_at"])
+        self._last_sent_position = None
+        self._last_observed_speed = None
         self._apply_server_state(result)
         self._mark_success()
         await self._async_save_and_notify()
@@ -252,14 +265,19 @@ class RouteProgressManager:
         self._mark_success()
         await self._async_save_and_notify()
 
-    async def _async_update(self, snapshot: TripSnapshot) -> None:
+    async def _async_update(
+        self, snapshot: TripSnapshot, *, arrival_observation: bool = False
+    ) -> None:
         """Send current route values for the active trip."""
         if not self.trip_id:
             return
+        payload = (
+            snapshot.arrival_observation_payload()
+            if arrival_observation
+            else snapshot.update_payload()
+        )
         try:
-            result = await self.api.async_update_trip(
-                self.trip_id, snapshot.update_payload()
-            )
+            result = await self.api.async_update_trip(self.trip_id, payload)
         except RouteProgressGoneError:
             await self._async_clear("expired")
             return
@@ -267,6 +285,8 @@ class RouteProgressManager:
             self._mark_error(err)
             return
         self._apply_server_state(result)
+        if not arrival_observation:
+            self._last_sent_position = snapshot.position_key
         self._mark_success()
         await self._async_save_and_notify()
 
@@ -307,6 +327,8 @@ class RouteProgressManager:
                 "status": self.status,
                 "accepts_updates": self.accepts_updates,
                 "arrived_at": self.arrived_at,
+                "arrival_detection": self.arrival_detection,
+                "arrival_followup_until": self.arrival_followup_until,
                 "finished_at": self.finished_at,
             }
         )
@@ -319,6 +341,10 @@ class RouteProgressManager:
         self.destination_name = _optional_string(data.get("destination_name"))
         self.expires_at = _optional_string(data.get("expires_at")) or self.expires_at
         self.arrived_at = _optional_string(data.get("arrived_at"))
+        self.arrival_detection = _optional_string(data.get("arrival_detection"))
+        self.arrival_followup_until = _optional_string(
+            data.get("arrival_followup_until")
+        )
         self.finished_at = _optional_string(data.get("finished_at"))
 
     def _snapshot(self) -> TripSnapshot:
@@ -348,6 +374,9 @@ class RouteProgressManager:
             destination_longitude=_attribute_number(destination_position, "longitude"),
             latitude=_attribute_number(vehicle_position, "latitude"),
             longitude=_attribute_number(vehicle_position, "longitude"),
+            position_observed_at=(
+                vehicle_position.last_updated if vehicle_position else None
+            ),
             heading=heading,
             speed_kmh=speed,
             eta_minutes=self._eta_minutes(),
@@ -356,6 +385,19 @@ class RouteProgressManager:
             charging_minutes=self._number_state(CONF_CHARGING_MINUTES_ENTITY),
             is_charging=self._charging_state(),
             battery_at_arrival=self._number_state(CONF_BATTERY_AT_ARRIVAL_ENTITY),
+        )
+
+    def _has_new_position(self, snapshot: TripSnapshot) -> bool:
+        """Return whether position changed or the vehicle has just stopped."""
+        position = snapshot.position_key
+        stopped = (
+            snapshot.speed_kmh == 0
+            and self._last_observed_speed != 0
+            and position is not None
+        )
+        self._last_observed_speed = snapshot.speed_kmh
+        return stopped or (
+            position is not None and position != self._last_sent_position
         )
 
     def _state(self, config_key: str) -> State | None:

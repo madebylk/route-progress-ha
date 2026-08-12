@@ -49,6 +49,8 @@ class RouteProgressShareURLSensor(RouteProgressEntity, SensorEntity):
             "destination": self.manager.destination_name,
             "expires_at": self.manager.expires_at,
             "arrived_at": self.manager.arrived_at,
+            "arrival_detection": self.manager.arrival_detection,
+            "arrival_followup_until": self.manager.arrival_followup_until,
             "finished_at": self.manager.finished_at,
             "last_error": self.manager.last_error,
         }
@@ -66,6 +68,7 @@ class RouteProgressStatusSensor(RouteProgressEntity, SensorEntity):
         "confirming_destination",
         "en_route",
         "destination_changed",
+        "arrived_followup",
         "arrived",
         "manually_finished",
         "expired",
@@ -87,5 +90,7 @@ class RouteProgressStatusSensor(RouteProgressEntity, SensorEntity):
             "destination": self.manager.destination_name,
             "expires_at": self.manager.expires_at,
             "arrived_at": self.manager.arrived_at,
+            "arrival_detection": self.manager.arrival_detection,
+            "arrival_followup_until": self.manager.arrival_followup_until,
             "finished_at": self.manager.finished_at,
         }

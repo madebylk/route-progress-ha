@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 
@@ -15,6 +16,7 @@ class TripSnapshot:
     destination_longitude: float | None
     latitude: float | None
     longitude: float | None
+    position_observed_at: datetime | None = None
     heading: float | None = None
     speed_kmh: float | None = None
     eta_minutes: float | None = None
@@ -35,6 +37,13 @@ class TripSnapshot:
     def position_valid(self) -> bool:
         """Return whether the current vehicle position is valid."""
         return _valid_point(self.latitude, self.longitude)
+
+    @property
+    def position_key(self) -> tuple[float, float] | None:
+        """Return the source-independent position used for change detection."""
+        if not self.position_valid:
+            return None
+        return (float(self.latitude), float(self.longitude))
 
     @property
     def destination_key(self) -> str:
@@ -67,9 +76,13 @@ class TripSnapshot:
                 "latitude": self.latitude,
                 "longitude": self.longitude,
             }
+            if self.position_observed_at is not None:
+                payload["observed_at"] = self.position_observed_at.isoformat()
+        # Keep an unavailable speed explicit so the backend can select its
+        # location-only arrival fallback without treating it as 0 km/h.
+        payload["speed_kmh"] = self.speed_kmh
         optional = {
             "heading": self.heading,
-            "speed_kmh": self.speed_kmh,
             "eta_minutes": self.eta_minutes,
             "distance_km": self.distance_km,
             "traffic_delay_minutes": self.traffic_delay_minutes,
@@ -80,6 +93,20 @@ class TripSnapshot:
         payload.update(
             {key: value for key, value in optional.items() if value is not None}
         )
+        return payload
+
+    def arrival_observation_payload(self) -> dict[str, Any]:
+        """Build a private arrival observation without publishing telemetry."""
+        payload: dict[str, Any] = {
+            "arrival_observation": True,
+            "speed_kmh": self.speed_kmh,
+        }
+        if self.destination_valid:
+            payload["destination"] = {
+                "name": self.destination_name,
+                "latitude": self.destination_latitude,
+                "longitude": self.destination_longitude,
+            }
         return payload
 
 

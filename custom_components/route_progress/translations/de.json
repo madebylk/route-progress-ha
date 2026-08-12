@@ -135,6 +135,7 @@
           "confirming_destination": "Navigationsziel wird bestätigt",
           "en_route": "Unterwegs",
           "destination_changed": "Navigationsziel wurde geändert",
+          "arrived_followup": "Angekommen (Position wird aktualisiert)",
           "arrived": "Angekommen",
           "manually_finished": "Manuell beendet",
           "expired": "Abgelaufen"

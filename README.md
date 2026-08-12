@@ -58,20 +58,38 @@ optional und es werden keine Cloudflare-Access-Header gesendet.
 
 Der Button `button.route_progress_start_share` erzeugt sofort einen teilbaren
 Link. Ein Ziel oder eine Fahrzeugposition werden dafür noch nicht benötigt. Das
-Backend übernimmt das erste mindestens 60 Sekunden stabile Navigationsziel,
-erkennt Zielabweichungen und bestätigt die Ankunft nach zwei Positionen innerhalb
-von 300 Metern um das Freigabeziel.
+Backend übernimmt das erste mindestens 60 Sekunden stabile Navigationsziel und
+erkennt Zielabweichungen. Innerhalb von 300 Metern bestätigt es die Ankunft nach
+zwei Minuten mit exakt `0 km/h`. Fehlt der Geschwindigkeitswert, greift nach zehn
+Minuten im Zielbereich ein Positions-Fallback.
 
 Bei einem abweichenden Navigationsziel friert der Server die öffentlich sichtbare
 Route ein. Kehrt das ursprüngliche Ziel zurück, wird die Fahrt automatisch
 fortgesetzt. Mit `button.route_progress_accept_destination` kann ein neues Ziel
-bewusst übernommen werden. Nach Ankunft oder manuellem Beenden werden keine
-weiteren Fahrtdaten gesendet; der Link bleibt bis zu seinem Ablauf erreichbar.
+bewusst übernommen werden. Nach erkannter Ankunft sendet die Integration noch
+zehn Minuten Fahrtdaten, damit die Darstellung bis zur Parkposition aufholt.
+Weiterfahrt oder Verlassen des Zielbereichs widerruft diese vorläufige Ankunft.
+Danach beziehungsweise nach manuellem Beenden werden keine weiteren Fahrtdaten
+gesendet; der Link bleibt bis zu seinem Ablauf erreichbar.
 
 Die Integration trifft keine eigenen Entscheidungen über den Fahrtverlauf. Sie
 übermittelt Home-Assistant-Snapshots und stellt den vom Backend gelieferten
-Lebenszyklusstatus dar. Ohne Betätigung des Start-Buttons wird keine Freigabe
-erstellt.
+Lebenszyklusstatus dar. Ein Snapshot wird nur gesendet, wenn Home Assistant an
+der Fahrzeugpositions-Entity gegenüber dem zuletzt erfolgreich übertragenen
+Snapshot eine andere Latitude oder Longitude liefert oder die Geschwindigkeit
+erstmals auf exakt `0 km/h` fällt. Andere Änderungen lösen unabhängig von der
+verwendeten Datenquelle keinen Fahrtdaten-Update aus. Geschwindigkeit, ETA,
+Reststrecke und weitere Werte
+bleiben so zeitlich an den übermittelten Standort gekoppelt. Das eingestellte
+Intervall bestimmt, wie schnell eine solche Positionsänderung erkannt wird.
+Der originale Home-Assistant-Zeitpunkt `last_updated` der Positions-Entity wird
+als Messzeitpunkt übertragen, sodass die Karte die GPS-Kadenz nicht aus späteren
+Server- oder Browser-Empfangszeiten ableiten muss. Ein fehlender Heading-Wert
+bleibt dabei explizit unbekannt; die Karte richtet den Marker dann an der Route
+aus und verwendet keinen aus Positionswanderungen geschätzten Ersatzwert.
+Während einer laufenden Ankunftsbestätigung sendet die Integration davon
+getrennte Beobachtungen an das Backend. Diese ändern keine öffentlich sichtbaren
+Fahrtdaten. Ohne Betätigung des Start-Buttons wird keine Freigabe erstellt.
 
 Die Integration stellt folgende Entities bereit:
 

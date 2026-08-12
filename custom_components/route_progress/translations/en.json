@@ -135,6 +135,7 @@
           "confirming_destination": "Confirming navigation destination",
           "en_route": "En route",
           "destination_changed": "Navigation destination changed",
+          "arrived_followup": "Arrived (updating position)",
           "arrived": "Arrived",
           "manually_finished": "Manually finished",
           "expired": "Expired"
