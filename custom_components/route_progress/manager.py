@@ -44,6 +44,11 @@ from .models import TripSnapshot
 
 _LOGGER = logging.getLogger(__name__)
 
+_DESTINATION_CONFIRMATION_STATUSES = {
+    "waiting_for_destination",
+    "confirming_destination",
+}
+
 
 class RouteProgressManager:
     """Observe HA entities and keep one Route Progress trip in sync."""
@@ -164,8 +169,8 @@ class RouteProgressManager:
 
         return remove_listener
 
-    async def async_sync(self) -> None:
-        """Update or finish an active trip based on current HA state."""
+    async def async_sync(self, *, destination_event: bool = False) -> None:
+        """Update an active trip based on the current Home Assistant state."""
         async with self._lock:
             snapshot = self._snapshot()
 
@@ -173,7 +178,12 @@ class RouteProgressManager:
                 await self._async_check_connection()
                 return
             if self.accepts_updates:
-                if self._has_new_position(snapshot):
+                has_new_position = self._has_new_position(snapshot)
+                if (
+                    destination_event
+                    or self.status in _DESTINATION_CONFIRMATION_STATUSES
+                    or has_new_position
+                ):
                     await self._async_update(snapshot)
                     return
                 if self.arrival_detection is not None:
@@ -238,6 +248,8 @@ class RouteProgressManager:
         self._mark_success()
         await self._async_save_and_notify()
         _LOGGER.info("Created waiting Route Progress share")
+        if self.accepts_updates and snapshot.destination_valid:
+            await self._async_update(snapshot)
 
     async def _async_check_connection(self) -> None:
         """Check API connectivity without creating or changing a trip."""
@@ -439,7 +451,7 @@ class RouteProgressManager:
 
     async def _async_destination_changed(self, _event: Event) -> None:
         """React immediately when destination state or attributes change."""
-        await self.async_sync()
+        await self.async_sync(destination_event=True)
 
     async def _async_interval(self, _now: datetime) -> None:
         """Update an active trip."""

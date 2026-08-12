@@ -74,12 +74,14 @@ gesendet; der Link bleibt bis zu seinem Ablauf erreichbar.
 
 Die Integration trifft keine eigenen Entscheidungen über den Fahrtverlauf. Sie
 übermittelt Home-Assistant-Snapshots und stellt den vom Backend gelieferten
-Lebenszyklusstatus dar. Ein Snapshot wird nur gesendet, wenn Home Assistant an
-der Fahrzeugpositions-Entity gegenüber dem zuletzt erfolgreich übertragenen
-Snapshot eine andere Latitude oder Longitude liefert oder die Geschwindigkeit
-erstmals auf exakt `0 km/h` fällt. Andere Änderungen lösen unabhängig von der
-verwendeten Datenquelle keinen Fahrtdaten-Update aus. Geschwindigkeit, ETA,
-Reststrecke und weitere Werte
+Lebenszyklusstatus dar. Beim Start wird ein bereits vorhandenes Navigationsziel
+sofort übermittelt. Während der serverseitigen Zielbestätigung und bei jeder
+Änderung der Ziel-Entities wird ebenfalls unabhängig von der Fahrzeugposition
+ein Snapshot gesendet. Im normalen Fahrtbetrieb wird ein Snapshot nur gesendet,
+wenn Home Assistant an der Fahrzeugpositions-Entity gegenüber dem zuletzt
+erfolgreich übertragenen Snapshot eine andere Latitude oder Longitude liefert
+oder die Geschwindigkeit erstmals auf exakt `0 km/h` fällt. Geschwindigkeit,
+ETA, Reststrecke und weitere Werte
 bleiben so zeitlich an den übermittelten Standort gekoppelt. Das eingestellte
 Intervall bestimmt, wie schnell eine solche Positionsänderung erkannt wird.
 Der originale Home-Assistant-Zeitpunkt `last_updated` der Positions-Entity wird
