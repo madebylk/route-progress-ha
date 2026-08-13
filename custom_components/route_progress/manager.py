@@ -173,8 +173,17 @@ class RouteProgressManager:
         """Update an active trip based on the current Home Assistant state."""
         async with self._lock:
             snapshot = self._snapshot()
+            _LOGGER.debug(
+                "Sync evaluation: trip_id=%s status=%s accepts_updates=%s destination_event=%s snapshot=%s",
+                self.trip_id,
+                self.status,
+                self.accepts_updates,
+                destination_event,
+                snapshot,
+            )
 
             if self.trip_id is None:
+                _LOGGER.debug("Sync decision: no active trip; checking connection")
                 await self._async_check_connection()
                 return
             if self.accepts_updates:
@@ -184,12 +193,22 @@ class RouteProgressManager:
                     or self.status in _DESTINATION_CONFIRMATION_STATUSES
                     or has_new_position
                 ):
+                    _LOGGER.debug(
+                        "Sync decision: send update (destination_event=%s confirmation=%s new_position=%s)",
+                        destination_event,
+                        self.status in _DESTINATION_CONFIRMATION_STATUSES,
+                        has_new_position,
+                    )
                     await self._async_update(snapshot)
                     return
                 if self.arrival_detection is not None:
+                    _LOGGER.debug("Sync decision: send arrival follow-up observation")
                     await self._async_update(snapshot, arrival_observation=True)
                     return
                 await self._async_check_connection()
+                _LOGGER.debug(
+                    "Sync decision: no changed route data; connection checked"
+                )
                 return
             await self._async_check_connection()
 
@@ -288,6 +307,12 @@ class RouteProgressManager:
             if arrival_observation
             else snapshot.update_payload()
         )
+        _LOGGER.debug(
+            "Sending trip update: trip_id=%s arrival_observation=%s payload=%s",
+            self.trip_id,
+            arrival_observation,
+            payload,
+        )
         try:
             result = await self.api.async_update_trip(self.trip_id, payload)
         except RouteProgressGoneError:
@@ -348,6 +373,7 @@ class RouteProgressManager:
 
     def _apply_server_state(self, data: dict[str, Any]) -> None:
         """Adopt lifecycle facts decided by the backend."""
+        previous_status = self.status
         self.status = str(data.get("status") or self.status)
         self.accepts_updates = bool(data.get("accepts_updates", False))
         self.destination_name = _optional_string(data.get("destination_name"))
@@ -358,6 +384,14 @@ class RouteProgressManager:
             data.get("arrival_followup_until")
         )
         self.finished_at = _optional_string(data.get("finished_at"))
+        _LOGGER.debug(
+            "Applied server state: trip_id=%s previous_status=%s status=%s accepts_updates=%s data=%s",
+            self.trip_id,
+            previous_status,
+            self.status,
+            self.accepts_updates,
+            data,
+        )
 
     def _snapshot(self) -> TripSnapshot:
         """Collect a consistent snapshot from configured HA entities."""
@@ -408,9 +442,18 @@ class RouteProgressManager:
             and position is not None
         )
         self._last_observed_speed = snapshot.speed_kmh
-        return stopped or (
+        changed = stopped or (
             position is not None and position != self._last_sent_position
         )
+        _LOGGER.debug(
+            "Position evaluation: position=%s last_sent=%s speed=%s stopped=%s changed=%s",
+            position,
+            self._last_sent_position,
+            snapshot.speed_kmh,
+            stopped,
+            changed,
+        )
+        return changed
 
     def _state(self, config_key: str) -> State | None:
         """Return a state for a configured entity key."""

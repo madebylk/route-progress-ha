@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class RouteProgressAPIError(Exception):
@@ -114,6 +117,7 @@ class RouteProgressAPI:
         json: dict[str, Any] | None = None,
     ) -> tuple[int, Any]:
         """Send one request and normalize API errors."""
+        _LOGGER.debug("API request: method=%s path=%s payload=%s", method, path, json)
         try:
             async with self._session.request(
                 method,
@@ -122,6 +126,12 @@ class RouteProgressAPI:
                 json=json,
                 timeout=self._timeout,
             ) as response:
+                _LOGGER.debug(
+                    "API response: method=%s path=%s status=%s",
+                    method,
+                    path,
+                    response.status,
+                )
                 if response.status in {401, 403}:
                     raise RouteProgressAuthError("API credentials were rejected")
                 if response.status == 410:
@@ -139,8 +149,10 @@ class RouteProgressAPI:
                     content = await response.json(content_type=None)
                 except (ValueError, ClientError):
                     content = await response.text()
+                _LOGGER.debug("API response body: path=%s content=%s", path, content)
                 return response.status, content
         except RouteProgressAPIError:
             raise
         except (ClientError, TimeoutError) as err:
+            _LOGGER.debug("API transport error: method=%s path=%s error=%r", method, path, err)
             raise RouteProgressAPIError("Could not connect to Route Progress") from err

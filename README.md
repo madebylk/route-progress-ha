@@ -117,3 +117,13 @@ eingegebene Version muss der `version` in
 
 API, Docker-Setup und Server-Dokumentation befinden sich in
 der internen Server-Dokumentation.
+
+# Development logging
+
+To trace entity snapshots, synchronization decisions, API payloads, and server responses, enable Home Assistant debug logging:
+
+```yaml
+logger:
+  logs:
+    custom_components.route_progress: debug
+```
