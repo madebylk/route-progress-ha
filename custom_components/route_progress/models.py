@@ -52,6 +52,22 @@ class TripSnapshot:
         longitude = round(self.destination_longitude or 0, 6)
         return f"{self.destination_name}|{latitude:.6f}|{longitude:.6f}"
 
+    @property
+    def update_key(self) -> tuple[Any, ...]:
+        """Return the semantic values which affect a published route."""
+        return (
+            self.destination_key if self.destination_valid else None,
+            self.position_key,
+            self.heading,
+            self.speed_kmh,
+            self.eta_minutes,
+            self.distance_km,
+            self.traffic_delay_minutes,
+            self.charging_minutes,
+            self.is_charging,
+            self.battery_at_arrival,
+        )
+
     def create_payload(self) -> dict[str, Any]:
         """Build the API payload used to create a trip."""
         payload = self.update_payload()
@@ -119,3 +135,39 @@ def _valid_point(latitude: float | None, longitude: float | None) -> bool:
         and -180 <= longitude <= 180
         and not (latitude == 0 and longitude == 0)
     )
+
+
+@dataclass(slots=True)
+class SnapshotDeliveryState:
+    """Track source observation time and successfully delivered route data."""
+
+    observed_position: tuple[float, float] | None = None
+    position_observed_at: datetime | None = None
+    sent_update_key: tuple[Any, ...] | None = None
+
+    def observe_position(
+        self,
+        position: tuple[float, float] | None,
+        source_updated_at: datetime | None,
+    ) -> datetime | None:
+        """Keep the timestamp at which coordinates actually changed."""
+        if position is None:
+            self.observed_position = None
+            self.position_observed_at = None
+            return None
+        if position != self.observed_position:
+            self.observed_position = position
+            self.position_observed_at = source_updated_at
+        return self.position_observed_at
+
+    def has_changes(self, snapshot: TripSnapshot) -> bool:
+        """Return whether route-relevant values differ from the last delivery."""
+        return snapshot.update_key != self.sent_update_key
+
+    def mark_sent(self, snapshot: TripSnapshot) -> None:
+        """Record a successfully delivered public telemetry snapshot."""
+        self.sent_update_key = snapshot.update_key
+
+    def reset_delivery(self) -> None:
+        """Force the next snapshot to be delivered for a newly created trip."""
+        self.sent_update_key = None

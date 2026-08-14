@@ -75,20 +75,20 @@ gesendet; der Link bleibt bis zu seinem Ablauf erreichbar.
 Die Integration trifft keine eigenen Entscheidungen über den Fahrtverlauf. Sie
 übermittelt Home-Assistant-Snapshots und stellt den vom Backend gelieferten
 Lebenszyklusstatus dar. Beim Start wird ein bereits vorhandenes Navigationsziel
-sofort übermittelt. Während der serverseitigen Zielbestätigung und bei jeder
-Änderung der Ziel-Entities wird ebenfalls unabhängig von der Fahrzeugposition
-ein Snapshot gesendet. Im normalen Fahrtbetrieb wird ein Snapshot nur gesendet,
-wenn Home Assistant an der Fahrzeugpositions-Entity gegenüber dem zuletzt
-erfolgreich übertragenen Snapshot eine andere Latitude oder Longitude liefert
-oder die Geschwindigkeit erstmals auf exakt `0 km/h` fällt. Geschwindigkeit,
-ETA, Reststrecke und weitere Werte
-bleiben so zeitlich an den übermittelten Standort gekoppelt. Das eingestellte
-Intervall bestimmt, wie schnell eine solche Positionsänderung erkannt wird.
-Der originale Home-Assistant-Zeitpunkt `last_updated` der Positions-Entity wird
-als Messzeitpunkt übertragen, sodass die Karte die GPS-Kadenz nicht aus späteren
-Server- oder Browser-Empfangszeiten ableiten muss. Ein fehlender Heading-Wert
-bleibt dabei explizit unbekannt; die Karte richtet den Marker dann an der Route
-aus und verwendet keinen aus Positionswanderungen geschätzten Ersatzwert.
+sofort übermittelt. Zusammengehörige Änderungen aller konfigurierten
+Quell-Entities werden eine Sekunde gesammelt und danach als konsistenter
+Snapshot ausgewertet. Nur semantisch geänderte Ziel-, Positions- oder
+Telemetriewerte werden gesendet; reine Aktualisierungen der HA-Entities erzeugen
+keinen zusätzlichen API-Aufruf. Während der serverseitigen Zielbestätigung und
+einer laufenden Ankunftsbestätigung erzwingt das konfigurierte Intervall weiterhin
+regelmäßige Beobachtungen.
+
+Der Messzeitpunkt der Fahrzeugposition ändert sich nur zusammen mit Latitude
+oder Longitude. Wiederholt die konfigurierte Entity-Quelle dieselben Koordinaten mit einem neuen
+`last_updated`, bleibt der ursprüngliche GPS-Zeitpunkt erhalten. Ein fehlender
+Heading-Wert bleibt dabei explizit unbekannt; die Karte richtet den Marker dann
+an der Route aus und verwendet keinen aus Positionswanderungen geschätzten
+Ersatzwert.
 Während einer laufenden Ankunftsbestätigung sendet die Integration davon
 getrennte Beobachtungen an das Backend. Diese ändern keine öffentlich sichtbaren
 Fahrtdaten. Ohne Betätigung des Start-Buttons wird keine Freigabe erstellt.
