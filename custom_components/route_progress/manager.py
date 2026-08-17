@@ -433,6 +433,7 @@ class RouteProgressManager:
         speed = self._number_state(CONF_SPEED_ENTITY)
         if speed is None and vehicle_position:
             speed = _as_number(vehicle_position.attributes.get("speed"))
+        eta_minutes, eta_source_value = self._eta()
 
         snapshot = TripSnapshot(
             destination_name=destination_name,
@@ -442,7 +443,8 @@ class RouteProgressManager:
             longitude=_attribute_number(vehicle_position, "longitude"),
             heading=heading,
             speed_kmh=speed,
-            eta_minutes=self._eta_minutes(),
+            eta_minutes=eta_minutes,
+            eta_source_value=eta_source_value,
             distance_km=self._number_state(CONF_DISTANCE_ENTITY),
             traffic_delay_minutes=self._number_state(CONF_TRAFFIC_DELAY_ENTITY),
             charging_minutes=self._number_state(CONF_CHARGING_MINUTES_ENTITY),
@@ -473,18 +475,19 @@ class RouteProgressManager:
             return None
         return value
 
-    def _eta_minutes(self) -> float | None:
-        """Convert a timestamp sensor to minutes, or accept numeric minutes."""
+    def _eta(self) -> tuple[float | None, str | None]:
+        """Return display minutes and the unchanged source value used for delivery."""
         state = self._state(CONF_ETA_ENTITY)
         if not state or state.state.lower() in UNKNOWN_STATES:
-            return None
+            return None, None
+        source_value = state.state
         parsed = dt_util.parse_datetime(state.state)
         if parsed is not None:
             now = dt_util.utcnow()
             minutes = (dt_util.as_utc(parsed) - now).total_seconds() / 60
-            return round(max(0, minutes), 1)
+            return round(max(0, minutes), 1), source_value
         value = _as_number(state.state)
-        return max(0, value) if value is not None else None
+        return (max(0, value) if value is not None else None), source_value
 
     def _charging_state(self) -> bool | None:
         """Read an optional binary charging entity."""

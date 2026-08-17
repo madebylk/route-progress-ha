@@ -35,6 +35,8 @@ def _snapshot(**changes):
         "latitude": 53.60,
         "longitude": 10.05,
         "speed_kmh": 30.0,
+        "eta_minutes": 12.0,
+        "eta_source_value": "2026-08-14T06:12:00+00:00",
     }
     values.update(changes)
     return TripSnapshot(**values)
@@ -72,6 +74,22 @@ class SnapshotDeliveryStateTest(unittest.TestCase):
         self.assertFalse(state.has_changes(refreshed))
         self.assertTrue(state.has_changes(_snapshot(speed_kmh=0.0)))
         self.assertTrue(state.has_changes(_snapshot(destination_name="Home")))
+
+    def test_counting_down_timestamp_eta_does_not_create_a_source_change(self) -> None:
+        state = SnapshotDeliveryState()
+        state.mark_sent(_snapshot(eta_minutes=12.0))
+
+        self.assertFalse(state.has_changes(_snapshot(eta_minutes=11.8)))
+
+    def test_actual_eta_source_change_is_delivered(self) -> None:
+        state = SnapshotDeliveryState()
+        state.mark_sent(_snapshot())
+
+        changed = _snapshot(
+            eta_minutes=10.0,
+            eta_source_value="2026-08-14T06:10:00+00:00",
+        )
+        self.assertTrue(state.has_changes(changed))
 
     def test_reset_forces_delivery_for_a_new_trip(self) -> None:
         state = SnapshotDeliveryState()

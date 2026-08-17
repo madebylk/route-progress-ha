@@ -20,6 +20,7 @@ class TripSnapshot:
     heading: float | None = None
     speed_kmh: float | None = None
     eta_minutes: float | None = None
+    eta_source_value: str | None = None
     distance_km: float | None = None
     traffic_delay_minutes: float | None = None
     charging_minutes: float | None = None
@@ -60,7 +61,10 @@ class TripSnapshot:
             self.position_key,
             self.heading,
             self.speed_kmh,
-            self.eta_minutes,
+            # Timestamp ETAs count down when converted to minutes even though the
+            # source observation itself has not changed. Compare the raw sensor
+            # value so only an actual source update triggers a delivery.
+            self.eta_source_value,
             self.distance_km,
             self.traffic_delay_minutes,
             self.charging_minutes,
