@@ -39,19 +39,13 @@ from .const import (
     CONF_VEHICLE_POSITION_ENTITY,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
-    OPTIONAL_ENTITY_KEYS,
-    REQUIRED_ENTITY_KEYS,
     UNKNOWN_STATES,
 )
-from .models import SnapshotDeliveryState, TripSnapshot
+from .models import PositionObservationState, TripSnapshot, classify_navigation_state
 
 _LOGGER = logging.getLogger(__name__)
 
-_DESTINATION_CONFIRMATION_STATUSES = {
-    "waiting_for_destination",
-    "confirming_destination",
-}
-_SOURCE_SETTLE_SECONDS = 1
+_POSITION_SETTLE_SECONDS = 1
 
 
 class RouteProgressManager:
@@ -89,8 +83,8 @@ class RouteProgressManager:
         self._listeners: set[Callable[[], None]] = set()
         self._unsubscribers: list[Callable[[], None]] = []
         self._lock = asyncio.Lock()
-        self._delivery = SnapshotDeliveryState()
-        self._cancel_source_sync: Callable[[], None] | None = None
+        self._position_observation = PositionObservationState()
+        self._cancel_position_sync: Callable[[], None] | None = None
 
     @property
     def active(self) -> bool:
@@ -105,10 +99,12 @@ class RouteProgressManager:
     @property
     def can_accept_destination(self) -> bool:
         """Return whether the currently observed destination can be accepted."""
+        snapshot = self._snapshot()
         return (
             self.trip_id is not None
             and self.status == "destination_changed"
-            and self._snapshot().destination_valid
+            and snapshot.navigation_state == "active"
+            and snapshot.destination_valid
         )
 
     def record_connection_error(self, err: RouteProgressAPIError) -> None:
@@ -137,16 +133,14 @@ class RouteProgressManager:
 
     async def async_start(self) -> None:
         """Start entity and interval listeners, then update restored state."""
-        source_entities = list(
-            dict.fromkeys(
-                entity_id
-                for key in (*REQUIRED_ENTITY_KEYS, *OPTIONAL_ENTITY_KEYS)
-                if (entity_id := self.config.get(key))
-            )
-        )
+        # A vehicle-position update is the coordinator boundary for a complete
+        # route snapshot. Changes of destination or optional metric entities are
+        # picked up with that position event or the periodic heartbeat, never as
+        # partially updated standalone snapshots.
+        position_entities = [self.config[CONF_VEHICLE_POSITION_ENTITY]]
         self._unsubscribers.append(
             async_track_state_change_event(
-                self.hass, source_entities, self._async_source_changed
+                self.hass, position_entities, self._async_position_changed
             )
         )
         interval = int(self.config.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
@@ -161,9 +155,9 @@ class RouteProgressManager:
 
     async def async_stop(self) -> None:
         """Unregister listeners without ending a remotely active trip."""
-        if self._cancel_source_sync is not None:
-            self._cancel_source_sync()
-            self._cancel_source_sync = None
+        if self._cancel_position_sync is not None:
+            self._cancel_position_sync()
+            self._cancel_position_sync = None
         for unsubscribe in self._unsubscribers:
             unsubscribe()
         self._unsubscribers.clear()
@@ -179,55 +173,36 @@ class RouteProgressManager:
 
         return remove_listener
 
-    async def async_sync(self, *, source_event: bool = False) -> None:
+    async def async_sync(self, *, position_event: bool = False) -> None:
         """Update an active trip based on the current Home Assistant state."""
         async with self._lock:
             snapshot = self._snapshot(track_position=True)
             _LOGGER.debug(
-                "Sync evaluation: trip_id=%s status=%s accepts_updates=%s source_event=%s snapshot=%s",
+                "Sync evaluation: trip_id=%s status=%s accepts_updates=%s "
+                "position_event=%s snapshot=%s",
                 self.trip_id,
                 self.status,
                 self.accepts_updates,
-                source_event,
+                position_event,
                 snapshot,
             )
 
             if self.trip_id is None:
-                if source_event:
-                    _LOGGER.debug("Sync decision: ignore source event without a trip")
+                if position_event:
+                    _LOGGER.debug("Sync decision: ignore position event without a trip")
                     return
                 _LOGGER.debug("Sync decision: no active trip; checking connection")
                 await self._async_check_connection()
                 return
             if self.accepts_updates:
-                has_changes = self._delivery.has_changes(snapshot)
-                if has_changes or (
-                    not source_event
-                    and self.status in _DESTINATION_CONFIRMATION_STATUSES
-                ):
-                    _LOGGER.debug(
-                        "Sync decision: send update (source_event=%s confirmation=%s changed=%s)",
-                        source_event,
-                        not source_event
-                        and self.status in _DESTINATION_CONFIRMATION_STATUSES,
-                        has_changes,
-                    )
-                    await self._async_update(snapshot)
-                    return
-                if not source_event and self.arrival_detection is not None:
-                    _LOGGER.debug("Sync decision: send arrival follow-up observation")
-                    await self._async_update(snapshot, arrival_observation=True)
-                    return
-                if source_event:
-                    _LOGGER.debug("Sync decision: ignore unchanged settled source data")
-                    return
-                await self._async_check_connection()
                 _LOGGER.debug(
-                    "Sync decision: no changed route data; connection checked"
+                    "Sync decision: send complete snapshot (position_event=%s)",
+                    position_event,
                 )
+                await self._async_update(snapshot)
                 return
-            if source_event:
-                _LOGGER.debug("Sync decision: ignore source event for terminal trip")
+            if position_event:
+                _LOGGER.debug("Sync decision: ignore position event for terminal trip")
                 return
             await self._async_check_connection()
 
@@ -245,7 +220,7 @@ class RouteProgressManager:
             if not self.trip_id:
                 return
             snapshot = self._snapshot(track_position=True)
-            if not snapshot.destination_valid:
+            if snapshot.navigation_state != "active" or not snapshot.destination_valid:
                 return
             try:
                 result = await self.api.async_accept_destination(
@@ -282,7 +257,6 @@ class RouteProgressManager:
         self.trip_id = str(result["trip_id"])
         self.share_url = str(result["share_url"])
         self.expires_at = str(result["expires_at"])
-        self._delivery.reset_delivery()
         self._apply_server_state(result)
         self._mark_success()
         await self._async_save_and_notify()
@@ -316,21 +290,14 @@ class RouteProgressManager:
         self._mark_success()
         await self._async_save_and_notify()
 
-    async def _async_update(
-        self, snapshot: TripSnapshot, *, arrival_observation: bool = False
-    ) -> None:
+    async def _async_update(self, snapshot: TripSnapshot) -> None:
         """Send current route values for the active trip."""
         if not self.trip_id:
             return
-        payload = (
-            snapshot.arrival_observation_payload()
-            if arrival_observation
-            else snapshot.update_payload()
-        )
+        payload = snapshot.update_payload()
         _LOGGER.debug(
-            "Sending trip update: trip_id=%s arrival_observation=%s payload=%s",
+            "Sending complete trip snapshot: trip_id=%s payload=%s",
             self.trip_id,
-            arrival_observation,
             payload,
         )
         try:
@@ -342,8 +309,6 @@ class RouteProgressManager:
             self._mark_error(err)
             return
         self._apply_server_state(result)
-        if not arrival_observation:
-            self._delivery.mark_sent(snapshot)
         self._mark_success()
         await self._async_save_and_notify()
 
@@ -405,7 +370,8 @@ class RouteProgressManager:
         )
         self.finished_at = _optional_string(data.get("finished_at"))
         _LOGGER.debug(
-            "Applied server state: trip_id=%s previous_status=%s status=%s accepts_updates=%s data=%s",
+            "Applied server state: trip_id=%s previous_status=%s status=%s "
+            "accepts_updates=%s data=%s",
             self.trip_id,
             previous_status,
             self.status,
@@ -420,8 +386,27 @@ class RouteProgressManager:
         vehicle_position = self._state(CONF_VEHICLE_POSITION_ENTITY)
 
         destination_name = ""
-        if destination_state and destination_state.state.lower() not in UNKNOWN_STATES:
+        destination_source_state = (
+            destination_state.state.strip().lower()
+            if destination_state
+            else "unavailable"
+        )
+        destination_position_state = (
+            destination_position.state.strip().lower()
+            if destination_position
+            else "unavailable"
+        )
+        if destination_state and destination_source_state not in UNKNOWN_STATES:
             destination_name = destination_state.state.strip()
+
+        destination_latitude = _attribute_number(destination_position, "latitude")
+        destination_longitude = _attribute_number(destination_position, "longitude")
+        navigation_state = classify_navigation_state(
+            destination_source_state,
+            destination_position_state,
+            destination_name,
+            destination_latitude, destination_longitude
+        )
 
         heading = self._number_state(CONF_HEADING_ENTITY)
         if heading is None and vehicle_position:
@@ -433,18 +418,18 @@ class RouteProgressManager:
         speed = self._number_state(CONF_SPEED_ENTITY)
         if speed is None and vehicle_position:
             speed = _as_number(vehicle_position.attributes.get("speed"))
-        eta_minutes, eta_source_value = self._eta()
+        eta_minutes = self._eta_minutes()
 
         snapshot = TripSnapshot(
             destination_name=destination_name,
-            destination_latitude=_attribute_number(destination_position, "latitude"),
-            destination_longitude=_attribute_number(destination_position, "longitude"),
+            destination_latitude=destination_latitude,
+            destination_longitude=destination_longitude,
+            navigation_state=navigation_state,
             latitude=_attribute_number(vehicle_position, "latitude"),
             longitude=_attribute_number(vehicle_position, "longitude"),
             heading=heading,
             speed_kmh=speed,
             eta_minutes=eta_minutes,
-            eta_source_value=eta_source_value,
             distance_km=self._number_state(CONF_DISTANCE_ENTITY),
             traffic_delay_minutes=self._number_state(CONF_TRAFFIC_DELAY_ENTITY),
             charging_minutes=self._number_state(CONF_CHARGING_MINUTES_ENTITY),
@@ -452,7 +437,7 @@ class RouteProgressManager:
             battery_at_arrival=self._number_state(CONF_BATTERY_AT_ARRIVAL_ENTITY),
         )
         if track_position:
-            snapshot.position_observed_at = self._delivery.observe_position(
+            snapshot.position_observed_at = self._position_observation.observe_position(
                 snapshot.position_key,
                 vehicle_position.last_updated if vehicle_position else None,
             )
@@ -475,19 +460,18 @@ class RouteProgressManager:
             return None
         return value
 
-    def _eta(self) -> tuple[float | None, str | None]:
-        """Return display minutes and the unchanged source value used for delivery."""
+    def _eta_minutes(self) -> float | None:
+        """Return the currently remaining ETA minutes."""
         state = self._state(CONF_ETA_ENTITY)
         if not state or state.state.lower() in UNKNOWN_STATES:
-            return None, None
-        source_value = state.state
+            return None
         parsed = dt_util.parse_datetime(state.state)
         if parsed is not None:
             now = dt_util.utcnow()
             minutes = (dt_util.as_utc(parsed) - now).total_seconds() / 60
-            return round(max(0, minutes), 1), source_value
+            return round(max(0, minutes), 1)
         value = _as_number(state.state)
-        return (max(0, value) if value is not None else None), source_value
+        return max(0, value) if value is not None else None
 
     def _charging_state(self) -> bool | None:
         """Read an optional binary charging entity."""
@@ -497,18 +481,18 @@ class RouteProgressManager:
         return state.state.lower() in {STATE_ON, "charging", "true", "1"}
 
     @callback
-    def _async_source_changed(self, _event: Event) -> None:
-        """Coalesce source entity updates into one internally consistent snapshot."""
-        if self._cancel_source_sync is not None:
-            self._cancel_source_sync()
-        self._cancel_source_sync = async_call_later(
-            self.hass, _SOURCE_SETTLE_SECONDS, self._async_settled_source_sync
+    def _async_position_changed(self, _event: Event) -> None:
+        """Coalesce one position update into a complete route snapshot."""
+        if self._cancel_position_sync is not None:
+            self._cancel_position_sync()
+        self._cancel_position_sync = async_call_later(
+            self.hass, _POSITION_SETTLE_SECONDS, self._async_settled_position_sync
         )
 
-    async def _async_settled_source_sync(self, _now: datetime) -> None:
-        """Publish a semantic source change after all coordinator entities settle."""
-        self._cancel_source_sync = None
-        await self.async_sync(source_event=True)
+    async def _async_settled_position_sync(self, _now: datetime) -> None:
+        """Publish all current route values after a position update settles."""
+        self._cancel_position_sync = None
+        await self.async_sync(position_event=True)
 
     async def _async_interval(self, _now: datetime) -> None:
         """Update an active trip."""

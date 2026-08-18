@@ -65,8 +65,14 @@ Minuten im Zielbereich ein Positions-Fallback.
 
 Bei einem abweichenden Navigationsziel friert der Server die öffentlich sichtbare
 Route ein. Kehrt das ursprüngliche Ziel zurück, wird die Fahrt automatisch
-fortgesetzt. Mit `button.route_progress_accept_destination` kann ein neues Ziel
-bewusst übernommen werden. Nach erkannter Ankunft sendet die Integration noch
+fortgesetzt. Eine bewusst im Fahrzeug gelöschte Route führt im Zustand
+`en_route` ebenfalls zu diesem eingefrorenen Zustand; erst die bereits erkannte
+Ankunfts-Nachlaufphase behält ihre Parkplatzsuchlogik. Eine vorübergehend
+`unknown` oder `unavailable` gewordene Quell-Entity wird davon unterschieden.
+Mit `button.route_progress_accept_destination` kann ein neues Ziel bewusst
+übernommen werden. Bereits gefahrener Track, ursprünglicher Startpunkt und
+bisherige Statistiken bleiben dabei erhalten; nur die verbleibende Route wird
+neu berechnet. Nach erkannter Ankunft sendet die Integration noch
 zehn Minuten Fahrtdaten, damit die Darstellung bis zur Parkposition aufholt.
 Weiterfahrt oder Verlassen des Zielbereichs widerruft diese vorläufige Ankunft.
 Danach beziehungsweise nach manuellem Beenden werden keine weiteren Fahrtdaten
@@ -75,13 +81,13 @@ gesendet; der Link bleibt bis zu seinem Ablauf erreichbar.
 Die Integration trifft keine eigenen Entscheidungen über den Fahrtverlauf. Sie
 übermittelt Home-Assistant-Snapshots und stellt den vom Backend gelieferten
 Lebenszyklusstatus dar. Beim Start wird ein bereits vorhandenes Navigationsziel
-sofort übermittelt. Zusammengehörige Änderungen aller konfigurierten
-Quell-Entities werden eine Sekunde gesammelt und danach als konsistenter
-Snapshot ausgewertet. Nur semantisch geänderte Ziel-, Positions- oder
-Telemetriewerte werden gesendet; reine Aktualisierungen der HA-Entities erzeugen
-keinen zusätzlichen API-Aufruf. Während der serverseitigen Zielbestätigung und
-einer laufenden Ankunftsbestätigung erzwingt das konfigurierte Intervall weiterhin
-regelmäßige Beobachtungen.
+sofort übermittelt. Bei jeder Aktualisierung der Fahrzeugpositions-Entity wird
+eine Sekunde auf zusammengehörige Werte gewartet und anschließend ein
+vollständiger Snapshot aller konfigurierten Routendaten gesendet. Änderungen
+beliebiger anderer Entities lösen keinen separaten, möglicherweise
+inkonsistenten Zwischen-Snapshot aus. Das konfigurierte Intervall übermittelt
+den vollständigen aktuellen Zustand zusätzlich als Heartbeat für serverseitige
+Bestätigungen und Timer.
 
 Der Messzeitpunkt der Fahrzeugposition ändert sich nur zusammen mit Latitude
 oder Longitude. Wiederholt die konfigurierte Entity-Quelle dieselben Koordinaten mit einem neuen

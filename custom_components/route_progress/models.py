@@ -7,6 +7,25 @@ from datetime import datetime
 from typing import Any
 
 
+def classify_navigation_state(
+    destination_source_state: str | None,
+    destination_position_state: str | None,
+    destination_name: str,
+    latitude: float | None,
+    longitude: float | None,
+) -> str:
+    """Distinguish an intentionally cleared route from an unavailable source."""
+    destination_state = (destination_source_state or "unavailable").strip().lower()
+    position_state = (destination_position_state or "unavailable").strip().lower()
+    if destination_state in {"unknown", "unavailable"}:
+        return "unavailable"
+    if destination_state in {"", "none"}:
+        return "cleared"
+    if position_state in {"unknown", "unavailable"} or not destination_name:
+        return "unavailable"
+    return "active" if _valid_point(latitude, longitude) else "unavailable"
+
+
 @dataclass(slots=True)
 class TripSnapshot:
     """Values collected from the configured Home Assistant entities."""
@@ -14,13 +33,13 @@ class TripSnapshot:
     destination_name: str
     destination_latitude: float | None
     destination_longitude: float | None
+    navigation_state: str
     latitude: float | None
     longitude: float | None
     position_observed_at: datetime | None = None
     heading: float | None = None
     speed_kmh: float | None = None
     eta_minutes: float | None = None
-    eta_source_value: str | None = None
     distance_km: float | None = None
     traffic_delay_minutes: float | None = None
     charging_minutes: float | None = None
@@ -46,32 +65,6 @@ class TripSnapshot:
             return None
         return (float(self.latitude), float(self.longitude))
 
-    @property
-    def destination_key(self) -> str:
-        """Return a stable key which detects name or coordinate changes."""
-        latitude = round(self.destination_latitude or 0, 6)
-        longitude = round(self.destination_longitude or 0, 6)
-        return f"{self.destination_name}|{latitude:.6f}|{longitude:.6f}"
-
-    @property
-    def update_key(self) -> tuple[Any, ...]:
-        """Return the semantic values which affect a published route."""
-        return (
-            self.destination_key if self.destination_valid else None,
-            self.position_key,
-            self.heading,
-            self.speed_kmh,
-            # Timestamp ETAs count down when converted to minutes even though the
-            # source observation itself has not changed. Compare the raw sensor
-            # value so only an actual source update triggers a delivery.
-            self.eta_source_value,
-            self.distance_km,
-            self.traffic_delay_minutes,
-            self.charging_minutes,
-            self.is_charging,
-            self.battery_at_arrival,
-        )
-
     def create_payload(self) -> dict[str, Any]:
         """Build the API payload used to create a trip."""
         payload = self.update_payload()
@@ -85,7 +78,8 @@ class TripSnapshot:
     def update_payload(self) -> dict[str, Any]:
         """Build an update payload, omitting unavailable optional values."""
         payload: dict[str, Any] = {}
-        if self.destination_valid:
+        payload["navigation_state"] = self.navigation_state
+        if self.navigation_state == "active" and self.destination_valid:
             payload["destination"] = {
                 "name": self.destination_name,
                 "latitude": self.destination_latitude,
@@ -115,21 +109,6 @@ class TripSnapshot:
         )
         return payload
 
-    def arrival_observation_payload(self) -> dict[str, Any]:
-        """Build a private arrival observation without publishing telemetry."""
-        payload: dict[str, Any] = {
-            "arrival_observation": True,
-            "speed_kmh": self.speed_kmh,
-        }
-        if self.destination_valid:
-            payload["destination"] = {
-                "name": self.destination_name,
-                "latitude": self.destination_latitude,
-                "longitude": self.destination_longitude,
-            }
-        return payload
-
-
 def _valid_point(latitude: float | None, longitude: float | None) -> bool:
     """Validate a geographic point the same way as the Go API."""
     if latitude is None or longitude is None:
@@ -142,12 +121,11 @@ def _valid_point(latitude: float | None, longitude: float | None) -> bool:
 
 
 @dataclass(slots=True)
-class SnapshotDeliveryState:
-    """Track source observation time and successfully delivered route data."""
+class PositionObservationState:
+    """Track the source time of the latest distinct vehicle position."""
 
     observed_position: tuple[float, float] | None = None
     position_observed_at: datetime | None = None
-    sent_update_key: tuple[Any, ...] | None = None
 
     def observe_position(
         self,
@@ -163,15 +141,3 @@ class SnapshotDeliveryState:
             self.observed_position = position
             self.position_observed_at = source_updated_at
         return self.position_observed_at
-
-    def has_changes(self, snapshot: TripSnapshot) -> bool:
-        """Return whether route-relevant values differ from the last delivery."""
-        return snapshot.update_key != self.sent_update_key
-
-    def mark_sent(self, snapshot: TripSnapshot) -> None:
-        """Record a successfully delivered public telemetry snapshot."""
-        self.sent_update_key = snapshot.update_key
-
-    def reset_delivery(self) -> None:
-        """Force the next snapshot to be delivered for a newly created trip."""
-        self.sent_update_key = None
