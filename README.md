@@ -3,10 +3,10 @@
 [![Validate Home Assistant integration](https://github.com/madebylk/route-progress-ha/actions/workflows/validate-hacs.yaml/badge.svg)](https://github.com/madebylk/route-progress-ha/actions/workflows/validate-hacs.yaml)
 [![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=madebylk&repository=route-progress-ha&category=integration)
 
-Eine HACS-kompatible Home-Assistant-Custom-Integration für den selbst gehosteten
-Route-Progress-Dienst. Sie erstellt
-auf Knopfdruck einen Freigabelink, übermittelt den Routenfortschritt und beendet
-die Freigabe bei einem Zielwechsel.
+Eine HACS-kompatible Home-Assistant-Custom-Integration für einen selbst
+gehosteten Route-Progress-Dienst. Sie erstellt auf Knopfdruck einen
+Freigabelink, übermittelt den Routenfortschritt und beendet die Freigabe bei
+einem Zielwechsel.
 
 ## Installation
 
@@ -118,11 +118,6 @@ Pull Requests und Pushes werden mit HACS und Hassfest validiert. Ein Release wir
 über **Actions → Publish HACS release → Run workflow** erstellt. Die dort
 eingegebene Version muss der `version` in
 `custom_components/route_progress/manifest.json` entsprechen.
-
-## Backend
-
-API, Docker-Setup und Server-Dokumentation befinden sich in
-der internen Server-Dokumentation.
 
 # Development logging
 
