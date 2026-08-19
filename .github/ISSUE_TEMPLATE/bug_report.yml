@@ -1,0 +1,55 @@
+name: Fehlerbericht
+description: Ein reproduzierbares Problem mit der Home-Assistant-Integration melden
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Bitte keine Tokens, Freigabelinks, Standortdaten oder andere persönliche Informationen einfügen.
+  - type: input
+    id: integration-version
+    attributes:
+      label: Version der Integration
+      placeholder: z. B. 0.11.0
+    validations:
+      required: true
+  - type: input
+    id: home-assistant-version
+    attributes:
+      label: Home-Assistant-Version
+      placeholder: z. B. 2026.8.0
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Beschreibung
+      description: Was ist passiert und welches Verhalten wurde erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Schritte zur Reproduktion
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Bereinigte Debug-Logs
+      description: Optional. Entferne vorher alle sensiblen und persönlichen Daten.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Vor dem Absenden
+      options:
+        - label: Ich habe nach vorhandenen Issues gesucht.
+          required: true
+        - label: Ich habe Tokens, Links, Standort- und persönliche Daten entfernt.
+          required: true

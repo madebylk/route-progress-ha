@@ -1,0 +1,25 @@
+name: Funktionsvorschlag
+description: Eine Verbesserung der Home-Assistant-Integration vorschlagen
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Ausgangssituation
+      description: Welches Problem soll innerhalb der Home-Assistant-Integration gelöst werden?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Vorschlag
+      description: Wie sollte sich die Integration stattdessen verhalten?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativen
+      description: Welche anderen Lösungen wurden bereits erwogen?

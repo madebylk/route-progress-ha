@@ -1,129 +1,153 @@
 # Route Progress for Home Assistant
 
+[![Latest release](https://img.shields.io/github/v/release/madebylk/route-progress-ha)](https://github.com/madebylk/route-progress-ha/releases/latest)
 [![Validate Home Assistant integration](https://github.com/madebylk/route-progress-ha/actions/workflows/validate-hacs.yaml/badge.svg)](https://github.com/madebylk/route-progress-ha/actions/workflows/validate-hacs.yaml)
-[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=madebylk&repository=route-progress-ha&category=integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=madebylk&repository=route-progress-ha&category=integration)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Eine HACS-kompatible Home-Assistant-Custom-Integration für einen selbst
-gehosteten Route-Progress-Dienst. Sie erstellt auf Knopfdruck einen
-Freigabelink, übermittelt den Routenfortschritt und beendet die Freigabe bei
-einem Zielwechsel.
+Route Progress ist eine benutzerdefinierte Home-Assistant-Integration, die den
+Fortschritt einer laufenden Route über einen zeitlich begrenzten Link teilbar
+macht. Die Daten stammen ausschließlich aus den in Home Assistant ausgewählten
+Entities.
 
-## Installation
+Dieses Repository enthält nur die quelloffene Home-Assistant-Integration. Der
+zugehörige Route-Progress-Dienst ist nicht Bestandteil dieses Repositorys und
+wird hier nicht als installierbare Server-Software angeboten. Für die Nutzung
+werden eine Dienst-URL und bereitgestellte Zugangsdaten benötigt.
 
-1. Dieses Repository in HACS als benutzerdefiniertes Repository vom Typ
-   **Integration** hinzufügen oder den Button oben verwenden.
+## Funktionen
+
+- Freigabelink direkt über eine Home-Assistant-Button-Entity starten
+- Position, Ziel, ETA, Reststrecke und weitere optionale Routendaten übermitteln
+- Zielwechsel erkennen und bewusst übernehmen
+- Freigabe manuell beenden
+- Verbindungs- und Freigabestatus als Home-Assistant-Entities anzeigen
+- Laufende Fahrt nach einem Home-Assistant-Neustart fortsetzen
+- Deutsche und englische Oberfläche
+
+## Voraussetzungen
+
+- Home Assistant mit HACS oder die Möglichkeit zur manuellen Installation
+- URL eines erreichbaren Route-Progress-Dienstes
+- ein für die Home-Assistant-Instanz bereitgestellter Zugriffstoken
+- Cloudflare-Access-Client-ID und -Client-Secret
+- passende Home-Assistant-Entities für Ziel und Fahrzeugposition
+
+Die Route-Progress-API unter `/api/v1` ist durch Cloudflare Access geschützt.
+Die Integration übermittelt die bereitgestellten Access-Daten bei den
+API-Aufrufen in den dafür vorgesehenen Headern.
+
+## Installation mit HACS
+
+1. Den Button **Open in HACS** oben verwenden oder dieses Repository in HACS als
+   benutzerdefiniertes Repository vom Typ **Integration** hinzufügen.
 2. **Route Progress** in HACS installieren.
 3. Home Assistant neu starten.
 4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** nach
    **Route Progress** suchen.
 
-Für eine manuelle Installation den Ordner `custom_components/route_progress`
-nach `/config/custom_components/route_progress` kopieren und Home Assistant neu
-starten.
+## Manuelle Installation
+
+Den Ordner `custom_components/route_progress` nach
+`/config/custom_components/route_progress` kopieren und Home Assistant neu
+starten. Updates müssen bei dieser Installationsart ebenfalls manuell
+eingespielt werden.
 
 ## Einrichtung
 
-Im Anlege- und Bearbeiten-Dialog werden Home-Assistant-Entities direkt über
-Entity-Selektoren ausgewählt.
+Im Einrichtungsdialog werden zuerst die Dienst-URL, der Zugriffstoken und das
+Aktualisierungsintervall zwischen 10 und 300 Sekunden eingetragen. Aktiviere
+**Cloudflare Access verwenden** und ergänze die bereitgestellte Client-ID und
+das Client-Secret.
 
-Pflichtfelder:
+Anschließend werden die Datenquellen direkt über Home-Assistant-Entity-Selektoren
+ausgewählt.
+
+Erforderlich sind:
 
 - Zielname
 - Zielposition mit den Attributen `latitude` und `longitude`
 - Fahrzeugposition mit den Attributen `latitude` und `longitude`
 
-Optionale Felder:
+Optional können konfiguriert werden:
 
 - Fahrtrichtung
 - Geschwindigkeit
-- ETA als Zeitstempel oder Minuten
+- ETA als Zeitstempel oder Minutenwert
 - Reststrecke
 - Verkehrsverzögerung
 - geplante Lademinuten
 - Ladestatus
 - erwarteter Akku bei Ankunft
 
-Zusätzlich werden die öffentliche Route-Progress-URL, ein für Home Assistant
-bereitgestellter Zugriffstoken und ein Aktualisierungsintervall zwischen 10 und
-300 Sekunden benötigt.
+## Verwendung
 
-Die Route-Progress-API unter `/api/v1` ist durch Cloudflare Access geschützt.
-Aktiviere im Dialog **Cloudflare Access verwenden** und trage die bereitgestellte
-Client-ID sowie das Client-Secret des Cloudflare Access Service-Tokens ein. Die
-Integration sendet beide Werte bei allen API-Aufrufen als
-`CF-Access-Client-Id` und `CF-Access-Client-Secret`.
+`button.route_progress_start_share` erzeugt einen Freigabelink. Sobald die
+konfigurierte Fahrzeugpositions-Entity aktualisiert wird, sendet die Integration
+nach einer kurzen Sammelphase einen vollständigen Snapshot der ausgewählten
+Routendaten. Das konfigurierte Intervall sendet denselben vollständigen Zustand
+zusätzlich als Heartbeat.
 
-## Verhalten
+Ein stabiles Ziel wird vom Dienst bestätigt. Bei einem späteren Zielwechsel
+wird die öffentliche Route eingefroren, bis das ursprüngliche Ziel zurückkehrt
+oder das neue Ziel mit `button.route_progress_accept_destination` übernommen
+wird. Mit `button.route_progress_finish_share` lässt sich die Freigabe jederzeit
+beenden.
 
-Der Button `button.route_progress_start_share` erzeugt sofort einen teilbaren
-Link. Ein Ziel oder eine Fahrzeugposition werden dafür noch nicht benötigt. Das
-Backend übernimmt das erste mindestens 60 Sekunden stabile Navigationsziel und
-erkennt Zielabweichungen. Innerhalb von 300 Metern bestätigt es die Ankunft nach
-zwei Minuten mit exakt `0 km/h`. Fehlt der Geschwindigkeitswert, greift nach zehn
-Minuten im Zielbereich ein Positions-Fallback.
-
-Bei einem abweichenden Navigationsziel friert der Server die öffentlich sichtbare
-Route ein. Kehrt das ursprüngliche Ziel zurück, wird die Fahrt automatisch
-fortgesetzt. Eine bewusst im Fahrzeug gelöschte Route führt im Zustand
-`en_route` ebenfalls zu diesem eingefrorenen Zustand; erst die bereits erkannte
-Ankunfts-Nachlaufphase behält ihre Parkplatzsuchlogik. Eine vorübergehend
-`unknown` oder `unavailable` gewordene Quell-Entity wird davon unterschieden.
-Mit `button.route_progress_accept_destination` kann ein neues Ziel bewusst
-übernommen werden. Bereits gefahrener Track, ursprünglicher Startpunkt und
-bisherige Statistiken bleiben dabei erhalten; nur die verbleibende Route wird
-neu berechnet. Nach erkannter Ankunft sendet die Integration noch
-zehn Minuten Fahrtdaten, damit die Darstellung bis zur Parkposition aufholt.
-Weiterfahrt oder Verlassen des Zielbereichs widerruft diese vorläufige Ankunft.
-Danach beziehungsweise nach manuellem Beenden werden keine weiteren Fahrtdaten
-gesendet; der Link bleibt bis zu seinem Ablauf erreichbar.
-
-Die Integration trifft keine eigenen Entscheidungen über den Fahrtverlauf. Sie
-übermittelt Home-Assistant-Snapshots und stellt den vom Backend gelieferten
-Lebenszyklusstatus dar. Beim Start wird ein bereits vorhandenes Navigationsziel
-sofort übermittelt. Bei jeder Aktualisierung der Fahrzeugpositions-Entity wird
-eine Sekunde auf zusammengehörige Werte gewartet und anschließend ein
-vollständiger Snapshot aller konfigurierten Routendaten gesendet. Änderungen
-beliebiger anderer Entities lösen keinen separaten, möglicherweise
-inkonsistenten Zwischen-Snapshot aus. Das konfigurierte Intervall übermittelt
-den vollständigen aktuellen Zustand zusätzlich als Heartbeat für serverseitige
-Bestätigungen und Timer.
-
-Der Messzeitpunkt der Fahrzeugposition ändert sich nur zusammen mit Latitude
-oder Longitude. Liefert die konfigurierte Fahrzeugpositions-Entity dieselben
-Koordinaten mit einem neuen `last_updated`, bleibt der ursprüngliche
-GPS-Zeitpunkt erhalten. Ein fehlender Heading-Wert bleibt dabei explizit
-unbekannt; die Karte richtet den Marker dann an der Route aus und verwendet
-keinen aus Positionswanderungen geschätzten Ersatzwert.
-Während einer laufenden Ankunftsbestätigung sendet die Integration davon
-getrennte Beobachtungen an das Backend. Diese ändern keine öffentlich sichtbaren
-Fahrtdaten. Ohne Betätigung des Start-Buttons wird keine Freigabe erstellt.
+Den Zustand der konfigurierten Navigations-Entities übermittelt die Integration
+neutral als `present`, `absent` oder `unknown`, ohne daraus eine
+anbieterspezifische Fahrerabsicht abzuleiten. Fehlt die Navigation außerhalb des
+Zielbereichs, friert der Dienst die öffentliche Position zunächst im Status
+`navigation_uncertain` ein. Kehrt das ursprüngliche Ziel zurück, wird die Fahrt
+automatisch fortgesetzt.
 
 Die Integration stellt folgende Entities bereit:
 
-- `sensor.route_progress_share_url`
-- `sensor.route_progress_share_status`
-- `binary_sensor.route_progress_active_share`
-- `binary_sensor.route_progress_cloud_connection` (Diagnose)
-- `button.route_progress_start_share`
-- `button.route_progress_accept_destination`
-- `button.route_progress_finish_share`
+| Entity | Zweck |
+| --- | --- |
+| `sensor.route_progress_share_url` | Aktueller oder zuletzt erstellter Freigabelink |
+| `sensor.route_progress_share_status` | Lebenszyklusstatus der Freigabe |
+| `binary_sensor.route_progress_active_share` | Zeigt eine aktive Freigabe an |
+| `binary_sensor.route_progress_cloud_connection` | Diagnose der Dienstverbindung |
+| `button.route_progress_start_share` | Startet eine neue Freigabe |
+| `button.route_progress_accept_destination` | Übernimmt ein geändertes Ziel |
+| `button.route_progress_finish_share` | Beendet die aktuelle Freigabe |
 
-Fahrt-ID, Serverstatus und Share-URL werden im Home-Assistant-Speicher
-persistiert. Das API-Token bleibt ausschließlich im Config Entry.
+## Datenschutz und Sicherheit
 
-## Releases
+- Ohne Betätigung des Start-Buttons wird keine Freigabe erstellt.
+- Übermittelt werden nur Werte aus den ausdrücklich konfigurierten Entities.
+- Zugriffstoken und Cloudflare-Access-Daten werden im Home-Assistant-Config-Entry
+  gespeichert und nicht als Entity-Attribute ausgegeben.
+- Fahrt-ID, Status und Freigabelink werden lokal in Home Assistant gespeichert,
+  damit eine laufende Freigabe einen Neustart übersteht.
+- Debug-Logs können Zustands- und API-Daten enthalten und sollten nur gezielt
+  und vorübergehend aktiviert werden.
 
-Pull Requests und Pushes werden mit HACS und Hassfest validiert. Ein Release wird
-über **Actions → Publish HACS release → Run workflow** erstellt. Die dort
-eingegebene Version muss der `version` in
-`custom_components/route_progress/manifest.json` entsprechen.
+Sicherheitsprobleme bitte nicht in einem öffentlichen Issue melden. Hinweise
+dazu stehen in [SECURITY.md](SECURITY.md).
 
-# Development logging
+## Fehlerdiagnose
 
-To trace entity snapshots, synchronization decisions, API payloads, and server responses, enable Home Assistant debug logging:
+Für eine gezielte Analyse kann Debug-Logging aktiviert werden:
 
 ```yaml
 logger:
   logs:
     custom_components.route_progress: debug
 ```
+
+Vor dem Teilen von Logs müssen Tokens, Freigabelinks, Entity-Namen und andere
+persönliche Daten entfernt werden.
+
+## Support und Beiträge
+
+Fehlerberichte und Funktionsvorschläge können über die
+[GitHub Issues](https://github.com/madebylk/route-progress-ha/issues) eingereicht
+werden. Bitte vorher prüfen, ob bereits ein passendes Issue existiert.
+
+Hinweise für Pull Requests stehen in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Lizenz
+
+Dieses Projekt steht unter der [MIT-Lizenz](LICENSE).

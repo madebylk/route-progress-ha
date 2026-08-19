@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitsproblem melden
+    url: https://github.com/madebylk/route-progress-ha/security/advisories/new
+    about: Sicherheitsprobleme vertraulich an den Maintainer melden
