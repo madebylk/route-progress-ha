@@ -134,6 +134,7 @@
           "waiting_for_destination": "Wartet auf Navigationsziel",
           "confirming_destination": "Navigationsziel wird bestätigt",
           "en_route": "Unterwegs",
+          "navigation_uncertain": "Navigationsdaten nicht verlässlich verfügbar",
           "destination_changed": "Navigationsziel wurde geändert",
           "arrived_followup": "Angekommen (Position wird aktualisiert)",
           "arrived": "Angekommen",

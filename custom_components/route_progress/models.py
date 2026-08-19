@@ -7,23 +7,23 @@ from datetime import datetime
 from typing import Any
 
 
-def classify_navigation_state(
+def classify_navigation_presence(
     destination_source_state: str | None,
     destination_position_state: str | None,
     destination_name: str,
     latitude: float | None,
     longitude: float | None,
 ) -> str:
-    """Distinguish an intentionally cleared route from an unavailable source."""
+    """Describe only what the configured entities currently prove."""
     destination_state = (destination_source_state or "unavailable").strip().lower()
     position_state = (destination_position_state or "unavailable").strip().lower()
     if destination_state in {"unknown", "unavailable"}:
-        return "unavailable"
+        return "unknown"
     if destination_state in {"", "none"}:
-        return "cleared"
+        return "absent"
     if position_state in {"unknown", "unavailable"} or not destination_name:
-        return "unavailable"
-    return "active" if _valid_point(latitude, longitude) else "unavailable"
+        return "unknown"
+    return "present" if _valid_point(latitude, longitude) else "unknown"
 
 
 @dataclass(slots=True)
@@ -33,10 +33,11 @@ class TripSnapshot:
     destination_name: str
     destination_latitude: float | None
     destination_longitude: float | None
-    navigation_state: str
+    navigation_presence: str
     latitude: float | None
     longitude: float | None
     position_observed_at: datetime | None = None
+    source_observed_at: datetime | None = None
     heading: float | None = None
     speed_kmh: float | None = None
     eta_minutes: float | None = None
@@ -78,8 +79,10 @@ class TripSnapshot:
     def update_payload(self) -> dict[str, Any]:
         """Build an update payload, omitting unavailable optional values."""
         payload: dict[str, Any] = {}
-        payload["navigation_state"] = self.navigation_state
-        if self.navigation_state == "active" and self.destination_valid:
+        payload["navigation_presence"] = self.navigation_presence
+        if self.source_observed_at is not None:
+            payload["source_observed_at"] = self.source_observed_at.isoformat()
+        if self.navigation_presence == "present" and self.destination_valid:
             payload["destination"] = {
                 "name": self.destination_name,
                 "latitude": self.destination_latitude,

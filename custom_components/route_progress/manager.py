@@ -41,7 +41,7 @@ from .const import (
     DOMAIN,
     UNKNOWN_STATES,
 )
-from .models import PositionObservationState, TripSnapshot, classify_navigation_state
+from .models import PositionObservationState, TripSnapshot, classify_navigation_presence
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class RouteProgressManager:
         return (
             self.trip_id is not None
             and self.status == "destination_changed"
-            and snapshot.navigation_state == "active"
+            and snapshot.navigation_presence == "present"
             and snapshot.destination_valid
         )
 
@@ -220,7 +220,7 @@ class RouteProgressManager:
             if not self.trip_id:
                 return
             snapshot = self._snapshot(track_position=True)
-            if snapshot.navigation_state != "active" or not snapshot.destination_valid:
+            if snapshot.navigation_presence != "present" or not snapshot.destination_valid:
                 return
             try:
                 result = await self.api.async_accept_destination(
@@ -401,7 +401,7 @@ class RouteProgressManager:
 
         destination_latitude = _attribute_number(destination_position, "latitude")
         destination_longitude = _attribute_number(destination_position, "longitude")
-        navigation_state = classify_navigation_state(
+        navigation_presence = classify_navigation_presence(
             destination_source_state,
             destination_position_state,
             destination_name,
@@ -424,7 +424,7 @@ class RouteProgressManager:
             destination_name=destination_name,
             destination_latitude=destination_latitude,
             destination_longitude=destination_longitude,
-            navigation_state=navigation_state,
+            navigation_presence=navigation_presence,
             latitude=_attribute_number(vehicle_position, "latitude"),
             longitude=_attribute_number(vehicle_position, "longitude"),
             heading=heading,
@@ -441,6 +441,12 @@ class RouteProgressManager:
                 snapshot.position_key,
                 vehicle_position.last_updated if vehicle_position else None,
             )
+            source_times = [
+                state.last_updated
+                for state in (destination_state, destination_position, vehicle_position)
+                if state is not None
+            ]
+            snapshot.source_observed_at = max(source_times, default=None)
         return snapshot
 
     def _state(self, config_key: str) -> State | None:

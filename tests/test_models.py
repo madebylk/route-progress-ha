@@ -25,7 +25,7 @@ def _load_models_module():
 models = _load_models_module()
 PositionObservationState = models.PositionObservationState
 TripSnapshot = models.TripSnapshot
-classify_navigation_state = models.classify_navigation_state
+classify_navigation_presence = models.classify_navigation_presence
 
 
 def _snapshot(**changes):
@@ -33,7 +33,7 @@ def _snapshot(**changes):
         "destination_name": "Work",
         "destination_latitude": 53.67,
         "destination_longitude": 10.10,
-        "navigation_state": "active",
+        "navigation_presence": "present",
         "latitude": 53.60,
         "longitude": 10.05,
         "speed_kmh": 30.0,
@@ -64,33 +64,38 @@ class PositionObservationStateTest(unittest.TestCase):
         self.assertIsNone(state.observe_position(None, later))
         self.assertEqual(state.observe_position((53.60, 10.05), later), later)
 
-    def test_payload_explicitly_distinguishes_navigation_state(self) -> None:
+    def test_payload_explicitly_distinguishes_navigation_presence(self) -> None:
         active = _snapshot().update_payload()
-        self.assertEqual(active["navigation_state"], "active")
+        self.assertEqual(active["navigation_presence"], "present")
         self.assertIn("destination", active)
 
         cleared = _snapshot(
-            navigation_state="cleared",
+            navigation_presence="absent",
             destination_name="",
             destination_latitude=None,
             destination_longitude=None,
         ).update_payload()
-        self.assertEqual(cleared["navigation_state"], "cleared")
+        self.assertEqual(cleared["navigation_presence"], "absent")
         self.assertNotIn("destination", cleared)
 
     def test_navigation_source_outage_is_not_a_cleared_route(self) -> None:
         self.assertEqual(
-            classify_navigation_state("unavailable", "home", "Work", 53.67, 10.10),
-            "unavailable",
+            classify_navigation_presence("unavailable", "home", "Work", 53.67, 10.10),
+            "unknown",
         )
         self.assertEqual(
-            classify_navigation_state("none", "home", "", 53.67, 10.10),
-            "cleared",
+            classify_navigation_presence("none", "home", "", 53.67, 10.10),
+            "absent",
         )
         self.assertEqual(
-            classify_navigation_state("Work", "home", "Work", 53.67, 10.10),
-            "active",
+            classify_navigation_presence("Work", "home", "Work", 53.67, 10.10),
+            "present",
         )
+
+    def test_payload_includes_source_observation_time(self) -> None:
+        observed = datetime(2026, 8, 18, 16, 7, tzinfo=UTC)
+        payload = _snapshot(source_observed_at=observed).update_payload()
+        self.assertEqual(payload["source_observed_at"], observed.isoformat())
 
 
 if __name__ == "__main__":

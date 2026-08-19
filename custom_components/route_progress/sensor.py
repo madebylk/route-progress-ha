@@ -67,6 +67,7 @@ class RouteProgressStatusSensor(RouteProgressEntity, SensorEntity):
         "waiting_for_destination",
         "confirming_destination",
         "en_route",
+        "navigation_uncertain",
         "destination_changed",
         "arrived_followup",
         "arrived",
