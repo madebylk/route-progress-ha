@@ -43,16 +43,15 @@ Optionale Felder:
 - Ladestatus
 - erwarteter Akku bei Ankunft
 
-Zusätzlich werden die öffentliche Route-Progress-URL, der in
-den Zugangsdaten konfigurierte Bearer-Token und ein
-Aktualisierungsintervall zwischen 10 und 300 Sekunden benötigt.
+Zusätzlich werden die öffentliche Route-Progress-URL, ein für Home Assistant
+bereitgestellter Zugriffstoken und ein Aktualisierungsintervall zwischen 10 und
+300 Sekunden benötigt.
 
-Ist `/api/v1` zusätzlich durch Cloudflare Access geschützt, kann im Dialog
-**Cloudflare Access verwenden** aktiviert werden. Die Integration fordert dann
-die Client-ID und das Client-Secret eines Cloudflare Access Service-Tokens an
-und sendet sie bei allen API-Aufrufen als `CF-Access-Client-Id` und
-`CF-Access-Client-Secret`. Ohne aktivierten Schalter bleiben beide Angaben
-optional und es werden keine Cloudflare-Access-Header gesendet.
+Die Route-Progress-API unter `/api/v1` ist durch Cloudflare Access geschützt.
+Aktiviere im Dialog **Cloudflare Access verwenden** und trage die bereitgestellte
+Client-ID sowie das Client-Secret des Cloudflare Access Service-Tokens ein. Die
+Integration sendet beide Werte bei allen API-Aufrufen als
+`CF-Access-Client-Id` und `CF-Access-Client-Secret`.
 
 ## Verhalten
 
@@ -90,11 +89,11 @@ den vollständigen aktuellen Zustand zusätzlich als Heartbeat für serverseitig
 Bestätigungen und Timer.
 
 Der Messzeitpunkt der Fahrzeugposition ändert sich nur zusammen mit Latitude
-oder Longitude. Wiederholt die konfigurierte Entity-Quelle dieselben Koordinaten mit einem neuen
-`last_updated`, bleibt der ursprüngliche GPS-Zeitpunkt erhalten. Ein fehlender
-Heading-Wert bleibt dabei explizit unbekannt; die Karte richtet den Marker dann
-an der Route aus und verwendet keinen aus Positionswanderungen geschätzten
-Ersatzwert.
+oder Longitude. Liefert die konfigurierte Fahrzeugpositions-Entity dieselben
+Koordinaten mit einem neuen `last_updated`, bleibt der ursprüngliche
+GPS-Zeitpunkt erhalten. Ein fehlender Heading-Wert bleibt dabei explizit
+unbekannt; die Karte richtet den Marker dann an der Route aus und verwendet
+keinen aus Positionswanderungen geschätzten Ersatzwert.
 Während einer laufenden Ankunftsbestätigung sendet die Integration davon
 getrennte Beobachtungen an das Backend. Diese ändern keine öffentlich sichtbaren
 Fahrtdaten. Ohne Betätigung des Start-Buttons wird keine Freigabe erstellt.
