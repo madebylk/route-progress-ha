@@ -96,10 +96,20 @@ beenden.
 
 Den Zustand der konfigurierten Navigations-Entities übermittelt die Integration
 neutral als `present`, `absent` oder `unknown`, ohne daraus eine
-anbieterspezifische Fahrerabsicht abzuleiten. Fehlt die Navigation außerhalb des
-Zielbereichs, friert der Dienst die öffentliche Position zunächst im Status
-`navigation_uncertain` ein. Kehrt das ursprüngliche Ziel zurück, wird die Fahrt
-automatisch fortgesetzt.
+anbieterspezifische Fahrerabsicht abzuleiten. Zielname und Zielposition werden
+dabei als gemeinsamer Snapshot stabilisiert: Kehrt nach einer
+`absent`-/`unknown`-Lücke eindeutig derselbe Zielname zurück, darf dessen letzte
+vollständige Position wiederverwendet werden. Ein anderer Zielname benötigt
+immer eine neue, zeitlich passende Zielposition. Ein explizites `absent` bleibt
+in jedem Fall `absent`. Nur der Dienst entscheidet anhand dieser neutralen
+Beobachtungen über Fahrerabsicht, Zielbestätigung und Fahrtlebenszyklus.
+
+Fehlt die Navigation außerhalb des Zielbereichs, friert der Dienst die
+öffentliche Position zunächst im Status `navigation_uncertain` ein. Kehrt das
+ursprüngliche Ziel zurück, wird die Fahrt automatisch fortgesetzt. Numerische
+Null-Sentinels für ETA, Reststrecke und erwarteten Akku werden während eines
+unvollständigen Navigations-Snapshots nicht übertragen; legitime Nullwerte wie
+Verkehrsverzögerung, Ladezeit und Ladestatus bleiben erhalten.
 
 Die Integration stellt folgende Entities bereit:
 
@@ -121,8 +131,9 @@ Die Integration stellt folgende Entities bereit:
   gespeichert und nicht als Entity-Attribute ausgegeben.
 - Fahrt-ID, Status und Freigabelink werden lokal in Home Assistant gespeichert,
   damit eine laufende Freigabe einen Neustart übersteht.
-- Debug-Logs können Zustands- und API-Daten enthalten und sollten nur gezielt
-  und vorübergehend aktiviert werden.
+- Debug-Logs können Zustands-, Routen- und API-Daten enthalten und sollten nur
+  gezielt und vorübergehend aktiviert werden. Freigabelinks und bekannte
+  Zugangsdatenfelder werden vor der Ausgabe redigiert.
 
 Sicherheitsprobleme bitte nicht in einem öffentlichen Issue melden. Hinweise
 dazu stehen in [SECURITY.md](SECURITY.md).

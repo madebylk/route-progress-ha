@@ -41,7 +41,12 @@ from .const import (
     DOMAIN,
     UNKNOWN_STATES,
 )
-from .models import PositionObservationState, TripSnapshot, classify_navigation_presence
+from .log_utils import redact_secrets
+from .models import (
+    DestinationObservationState,
+    PositionObservationState,
+    TripSnapshot,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,6 +89,7 @@ class RouteProgressManager:
         self._unsubscribers: list[Callable[[], None]] = []
         self._lock = asyncio.Lock()
         self._position_observation = PositionObservationState()
+        self._destination_observation = DestinationObservationState()
         self._cancel_position_sync: Callable[[], None] | None = None
 
     @property
@@ -376,7 +382,7 @@ class RouteProgressManager:
             previous_status,
             self.status,
             self.accepts_updates,
-            data,
+            redact_secrets(data),
         )
 
     def _snapshot(self, *, track_position: bool = False) -> TripSnapshot:
@@ -399,14 +405,19 @@ class RouteProgressManager:
         if destination_state and destination_source_state not in UNKNOWN_STATES:
             destination_name = destination_state.state.strip()
 
-        destination_latitude = _attribute_number(destination_position, "latitude")
-        destination_longitude = _attribute_number(destination_position, "longitude")
-        navigation_presence = classify_navigation_presence(
+        destination_observation = self._destination_observation.observe(
             destination_source_state,
             destination_position_state,
             destination_name,
-            destination_latitude, destination_longitude
+            _attribute_number(destination_position, "latitude"),
+            _attribute_number(destination_position, "longitude"),
+            destination_state.last_updated if destination_state else None,
+            destination_position.last_updated if destination_position else None,
         )
+        destination_name = destination_observation.name
+        destination_latitude = destination_observation.latitude
+        destination_longitude = destination_observation.longitude
+        navigation_presence = destination_observation.navigation_presence
 
         heading = self._number_state(CONF_HEADING_ENTITY)
         if heading is None and vehicle_position:
@@ -427,6 +438,9 @@ class RouteProgressManager:
             navigation_presence=navigation_presence,
             latitude=_attribute_number(vehicle_position, "latitude"),
             longitude=_attribute_number(vehicle_position, "longitude"),
+            navigation_data_complete=(
+                destination_observation.navigation_data_complete
+            ),
             heading=heading,
             speed_kmh=speed,
             eta_minutes=eta_minutes,

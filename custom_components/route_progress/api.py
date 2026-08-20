@@ -7,6 +7,8 @@ from typing import Any
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
+from .log_utils import redact_secrets
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -149,7 +151,11 @@ class RouteProgressAPI:
                     content = await response.json(content_type=None)
                 except (ValueError, ClientError):
                     content = await response.text()
-                _LOGGER.debug("API response body: path=%s content=%s", path, content)
+                _LOGGER.debug(
+                    "API response body: path=%s content=%s",
+                    path,
+                    redact_secrets(content),
+                )
                 return response.status, content
         except RouteProgressAPIError:
             raise
