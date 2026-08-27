@@ -5,28 +5,52 @@
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=madebylk&repository=route-progress-ha&category=integration)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Route Progress is a custom Home Assistant integration for sharing the live progress of a journey through a temporary link. It sends only data from the Home Assistant entities you explicitly select.
+Route Progress turns Home Assistant journey data into a polished live page that you can share with friends and family. Recipients need no account and no app: one temporary, read-only link shows where the journey stands and what to expect next.
 
-## How sharing works
+![Route Progress live journey with the complete road route, driven track, current vehicle position, destination, ETA, and remaining distance](docs/images/showcase-live-route-desktop.png)
+
+The map makes progress immediately understandable: the driven section is grey, the remaining road route is blue, and the live vehicle marker sits between the start and destination. ETA, remaining time, distance, traffic delay, and charging time stay visible above the map.
+
+## From one button to a live share
 
 1. Press **Start share** in Home Assistant.
 2. Route Progress immediately creates a unique, unguessable link that is valid for 24 hours.
-3. Copy the link from Home Assistant and send it to friends, family, or anyone waiting for you. They do not need an account or an app.
-4. The public, read-only page updates as the vehicle moves and shows the destination, route, driven track, ETA, remaining time and distance, traffic delay, charging time, and estimated battery level at arrival.
-5. Press **Finish share** when needed. The frozen page remains readable until its normal 24-hour expiry.
+3. Copy the link from Home Assistant and send it to friends, family, or anyone waiting for you.
+4. The public page updates as the vehicle moves. It is read-only and never exposes Home Assistant access.
+5. Press **Finish share** when needed. The completed page remains readable until its normal 24-hour expiry.
 
-The link is ready immediately, even while the service is still waiting for the journey to begin:
+The share exists immediately, even before navigation and the first vehicle position arrive:
 
-![A newly created Route Progress share waiting for the trip to begin](docs/images/route-progress-share-created.png)
+![A newly created Route Progress share waiting for the journey to begin](docs/images/route-progress-share-created.png)
 
-Once the trip is under way, the same link presents its live progress at a glance:
+As soon as trip data arrives, the same link becomes the live map shown above. No new link needs to be sent.
 
-![A live Route Progress journey showing destination, ETA, remaining time, distance, traffic delay, and charging time](docs/images/route-progress-live-trip.png)
+## Built for every screen
 
-These screenshots were captured from a real, locally running Route Progress demo, not from a mock-up.
+The responsive layout keeps the complete journey useful on a phone: status, progress, ETA, distance, map, markers, legend, and map controls remain available without installing an app.
+
+<p align="center">
+  <img src="docs/images/showcase-live-route-mobile.png" width="420" alt="Responsive mobile Route Progress page with live map, road route, progress, ETA, and distance">
+</p>
+
+## More than a moving dot
+
+Route Progress translates the incoming Home Assistant entities into clear journey states. Viewers can tell whether the vehicle is moving normally, delayed by traffic, stopped to charge, waiting to depart, or already at the destination.
+
+| Traffic-aware progress | Charging stops |
+| --- | --- |
+| The status changes to **In traffic**, the delay is called out, and the driven and remaining route stay visible. | The page changes to **Charging stop** and shows the planned charging time alongside the live journey. |
+| ![Route Progress showing a traffic delay on a real road route](docs/images/showcase-traffic-delay.png) | ![Route Progress showing a charging stop and planned charging time](docs/images/showcase-charging-stop.png) |
+
+## A useful record until the link expires
+
+When the destination is reached, Route Progress presents the completed route, arrival time, total journey duration, and travelled distance. The frozen result remains available through the same link until its 24-hour expiry.
+
+![Completed Route Progress journey showing arrival details and the full driven road route](docs/images/showcase-trip-arrived.png)
+
+All screenshots above were captured from real, locally running Route Progress demo journeys using calculated road routes. They are not interface mock-ups.
 
 ## Features
-
 - Create a share link directly through a Home Assistant button entity
 - Send position, destination, ETA, remaining distance, and optional route data
 - Detect destination changes and accept them deliberately
