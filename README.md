@@ -5,160 +5,130 @@
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=madebylk&repository=route-progress-ha&category=integration)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Route Progress ist eine benutzerdefinierte Home-Assistant-Integration, die den
-Fortschritt einer laufenden Route über einen zeitlich begrenzten Link teilbar
-macht. Die Daten stammen ausschließlich aus den in Home Assistant ausgewählten
-Entities.
+Route Progress is a custom Home Assistant integration for sharing the live progress of a journey through a temporary link. It sends only data from the Home Assistant entities you explicitly select.
 
-Dieses Repository enthält nur die quelloffene Home-Assistant-Integration. Der
-zugehörige Route-Progress-Dienst ist nicht Bestandteil dieses Repositorys und
-wird hier nicht als installierbare Server-Software angeboten. Für die Nutzung
-werden eine Dienst-URL und bereitgestellte Zugangsdaten benötigt.
+## How sharing works
 
-## Funktionen
+1. Press **Start share** in Home Assistant.
+2. Route Progress immediately creates a unique, unguessable link that is valid for 24 hours.
+3. Copy the link from Home Assistant and send it to friends, family, or anyone waiting for you. They do not need an account or an app.
+4. The public, read-only page updates as the vehicle moves and shows the destination, route, driven track, ETA, remaining time and distance, traffic delay, charging time, and estimated battery level at arrival.
+5. Press **Finish share** when needed. The frozen page remains readable until its normal 24-hour expiry.
 
-- Freigabelink direkt über eine Home-Assistant-Button-Entity starten
-- Position, Ziel, ETA, Reststrecke und weitere optionale Routendaten übermitteln
-- Zielwechsel erkennen und bewusst übernehmen
-- Freigabe manuell beenden
-- Verbindungs- und Freigabestatus als Home-Assistant-Entities anzeigen
-- Laufende Fahrt nach einem Home-Assistant-Neustart fortsetzen
-- Deutsche und englische Oberfläche
+The link is ready immediately, even while the service is still waiting for the journey to begin:
 
-## Voraussetzungen
+![A newly created Route Progress share waiting for the trip to begin](docs/images/route-progress-share-created.png)
 
-- Home Assistant mit HACS oder die Möglichkeit zur manuellen Installation
-- URL eines erreichbaren Route-Progress-Dienstes
-- ein für die Home-Assistant-Instanz bereitgestellter Zugriffstoken
-- Cloudflare-Access-Client-ID und -Client-Secret
-- passende Home-Assistant-Entities für Ziel und Fahrzeugposition
+Once the trip is under way, the same link presents its live progress at a glance:
 
-Die Route-Progress-API unter `/api/v1` ist durch Cloudflare Access geschützt.
-Die Integration übermittelt die bereitgestellten Access-Daten bei den
-API-Aufrufen in den dafür vorgesehenen Headern.
+![A live Route Progress journey showing destination, ETA, remaining time, distance, traffic delay, and charging time](docs/images/route-progress-live-trip.png)
 
-## Installation mit HACS
+These screenshots were captured from a real, locally running Route Progress demo, not from a mock-up.
 
-1. Den Button **Open in HACS** oben verwenden oder dieses Repository in HACS als
-   benutzerdefiniertes Repository vom Typ **Integration** hinzufügen.
-2. **Route Progress** in HACS installieren.
-3. Home Assistant neu starten.
-4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** nach
-   **Route Progress** suchen.
+## Features
 
-## Manuelle Installation
+- Create a share link directly through a Home Assistant button entity
+- Send position, destination, ETA, remaining distance, and optional route data
+- Detect destination changes and accept them deliberately
+- Finish a share manually at any time
+- Expose connection and share status as Home Assistant entities
+- Resume an active trip after a Home Assistant restart
+- German and English user interface
+- Configurable update interval from 10 to 300 seconds
 
-Den Ordner `custom_components/route_progress` nach
-`/config/custom_components/route_progress` kopieren und Home Assistant neu
-starten. Updates müssen bei dieser Installationsart ebenfalls manuell
-eingespielt werden.
+This repository contains only the open-source Home Assistant integration. The Route Progress service is maintained separately and is not installed by this repository. Using the integration requires a service URL and credentials supplied by the service operator.
 
-## Einrichtung
+## Requirements
 
-Im Einrichtungsdialog werden zuerst die Dienst-URL, der Zugriffstoken und das
-Aktualisierungsintervall zwischen 10 und 300 Sekunden eingetragen. Aktiviere
-**Cloudflare Access verwenden** und ergänze die bereitgestellte Client-ID und
-das Client-Secret.
+- Home Assistant with HACS, or support for manual custom-integration installation
+- URL of a reachable Route Progress service
+- API token issued for this Home Assistant instance
+- Cloudflare Access client ID and client secret when required
+- Suitable Home Assistant entities for the destination and vehicle position
 
-Anschließend werden die Datenquellen direkt über Home-Assistant-Entity-Selektoren
-ausgewählt.
+## Installation with HACS
 
-Erforderlich sind:
+1. Use the **Open in HACS** badge above, or add https://github.com/madebylk/route-progress-ha to HACS as a custom repository of type **Integration**.
+2. Install **Route Progress** in HACS.
+3. Restart Home Assistant.
+4. Open **Settings → Devices & services → Add integration** and search for **Route Progress**.
 
-- Zielname
-- Zielposition mit den Attributen `latitude` und `longitude`
-- Fahrzeugposition mit den Attributen `latitude` und `longitude`
+## Manual installation
 
-Optional können konfiguriert werden:
+Copy custom_components/route_progress to /config/custom_components/route_progress and restart Home Assistant. Updates must also be installed manually when using this method.
 
-- Fahrtrichtung
-- Geschwindigkeit
-- ETA als Zeitstempel oder Minutenwert
-- Reststrecke
-- Verkehrsverzögerung
-- geplante Lademinuten
-- Ladestatus
-- erwarteter Akku bei Ankunft
+## Setup
 
-## Verwendung
+First enter the service URL, API token, and an update interval between 10 and 300 seconds. Enable **Use Cloudflare Access** and enter the supplied client ID and client secret when required.
 
-`button.route_progress_start_share` erzeugt einen Freigabelink. Sobald die
-konfigurierte Fahrzeugpositions-Entity aktualisiert wird, sendet die Integration
-nach einer kurzen Sammelphase einen vollständigen Snapshot der ausgewählten
-Routendaten. Das konfigurierte Intervall sendet denselben vollständigen Zustand
-zusätzlich als Heartbeat.
+Then select data sources through Home Assistant entity selectors.
 
-Ein stabiles Ziel wird vom Dienst bestätigt. Bei einem späteren Zielwechsel
-wird die öffentliche Route eingefroren, bis das ursprüngliche Ziel zurückkehrt
-oder das neue Ziel mit `button.route_progress_accept_destination` übernommen
-wird. Mit `button.route_progress_finish_share` lässt sich die Freigabe jederzeit
-beenden.
+Required entities:
 
-Den Zustand der konfigurierten Navigations-Entities übermittelt die Integration
-neutral als `present`, `absent` oder `unknown`, ohne daraus eine
-anbieterspezifische Fahrerabsicht abzuleiten. Zielname und Zielposition werden
-dabei als gemeinsamer Snapshot stabilisiert: Kehrt nach einer
-`absent`-/`unknown`-Lücke eindeutig derselbe Zielname zurück, darf dessen letzte
-vollständige Position wiederverwendet werden. Ein anderer Zielname benötigt
-immer eine neue, zeitlich passende Zielposition. Ein explizites `absent` bleibt
-in jedem Fall `absent`. Nur der Dienst entscheidet anhand dieser neutralen
-Beobachtungen über Fahrerabsicht, Zielbestätigung und Fahrtlebenszyklus.
+- Destination name
+- Destination position with latitude and longitude attributes
+- Vehicle position with latitude and longitude attributes
 
-Fehlt die Navigation außerhalb des Zielbereichs, friert der Dienst die
-öffentliche Position zunächst im Status `navigation_uncertain` ein. Kehrt das
-ursprüngliche Ziel zurück, wird die Fahrt automatisch fortgesetzt. Numerische
-Null-Sentinels für ETA, Reststrecke und erwarteten Akku werden während eines
-unvollständigen Navigations-Snapshots nicht übertragen; legitime Nullwerte wie
-Verkehrsverzögerung, Ladezeit und Ladestatus bleiben erhalten.
+Optional entities:
 
-Die Integration stellt folgende Entities bereit:
+- Heading
+- Speed
+- ETA as a timestamp or number of minutes
+- Remaining distance
+- Traffic delay
+- Planned charging time
+- Charging status
+- Estimated battery level at arrival
 
-| Entity | Zweck |
+## Usage
+
+button.route_progress_start_share creates the unique 24-hour share link immediately. When the configured vehicle-position entity changes, the integration sends a complete snapshot of the selected route data after a short collection period. The configured interval also sends the complete current state as a heartbeat.
+
+The service confirms a stable destination. If the destination later changes, the public route is frozen until the original destination returns or the new destination is accepted with button.route_progress_accept_destination. Use button.route_progress_finish_share to stop a share manually.
+
+The integration reports navigation state neutrally as present, absent, or unknown. The service alone decides driver intent, destination confirmation, and the journey lifecycle.
+
+| Entity | Purpose |
 | --- | --- |
-| `sensor.route_progress_share_url` | Aktueller oder zuletzt erstellter Freigabelink |
-| `sensor.route_progress_share_status` | Lebenszyklusstatus der Freigabe |
-| `binary_sensor.route_progress_active_share` | Zeigt eine aktive Freigabe an |
-| `binary_sensor.route_progress_cloud_connection` | Diagnose der Dienstverbindung |
-| `button.route_progress_start_share` | Startet eine neue Freigabe |
-| `button.route_progress_accept_destination` | Übernimmt ein geändertes Ziel |
-| `button.route_progress_finish_share` | Beendet die aktuelle Freigabe |
+| sensor.route_progress_share_url | Current or most recently created share link |
+| sensor.route_progress_share_status | Server-side share lifecycle status |
+| binary_sensor.route_progress_active_share | Whether a share is active |
+| binary_sensor.route_progress_cloud_connection | Service connection diagnostics |
+| button.route_progress_start_share | Create a new share |
+| button.route_progress_accept_destination | Accept a changed destination |
+| button.route_progress_finish_share | Finish the active share |
 
-## Datenschutz und Sicherheit
+Trip ID, status, and share link are stored locally in Home Assistant so an active share survives a restart. Credentials are never exposed as entity attributes.
 
-- Ohne Betätigung des Start-Buttons wird keine Freigabe erstellt.
-- Übermittelt werden nur Werte aus den ausdrücklich konfigurierten Entities.
-- Zugriffstoken und Cloudflare-Access-Daten werden im Home-Assistant-Config-Entry
-  gespeichert und nicht als Entity-Attribute ausgegeben.
-- Fahrt-ID, Status und Freigabelink werden lokal in Home Assistant gespeichert,
-  damit eine laufende Freigabe einen Neustart übersteht.
-- Debug-Logs können Zustands-, Routen- und API-Daten enthalten und sollten nur
-  gezielt und vorübergehend aktiviert werden. Freigabelinks und bekannte
-  Zugangsdatenfelder werden vor der Ausgabe redigiert.
+## Privacy and security
 
-Sicherheitsprobleme bitte nicht in einem öffentlichen Issue melden. Hinweise
-dazu stehen in [SECURITY.md](SECURITY.md).
+- No share is created until the start button is pressed.
+- Only values from explicitly configured entities are transmitted.
+- The public link is read-only and expires after 24 hours.
+- API and Cloudflare Access credentials stay in the Home Assistant config entry.
+- Debug logs can contain state, route, and API data and should be enabled only temporarily.
+- Share links and known credential fields are redacted from integration logs.
 
-## Fehlerdiagnose
+Do not report security vulnerabilities in a public issue. See [SECURITY.md](SECURITY.md).
 
-Für eine gezielte Analyse kann Debug-Logging aktiviert werden:
+## Troubleshooting
 
-```yaml
+Enable debug logging temporarily:
+
+~~~yaml
 logger:
   logs:
     custom_components.route_progress: debug
-```
+~~~
 
-Vor dem Teilen von Logs müssen Tokens, Freigabelinks, Entity-Namen und andere
-persönliche Daten entfernt werden.
+Remove tokens, share links, entity names, and other personal information before sharing logs.
 
-## Support und Beiträge
+## Support and contributions
 
-Fehlerberichte und Funktionsvorschläge können über die
-[GitHub Issues](https://github.com/madebylk/route-progress-ha/issues) eingereicht
-werden. Bitte vorher prüfen, ob bereits ein passendes Issue existiert.
+Use [GitHub Issues](https://github.com/madebylk/route-progress-ha/issues) for bug reports and feature requests. Check for an existing issue first.
 
-Hinweise für Pull Requests stehen in [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for pull request guidelines.
 
-## Lizenz
+## License
 
-Dieses Projekt steht unter der [MIT-Lizenz](LICENSE).
+This project is available under the [MIT License](LICENSE).
