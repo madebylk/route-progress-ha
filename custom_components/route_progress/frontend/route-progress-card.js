@@ -244,11 +244,20 @@ class RouteProgressCard extends HTMLElement {
       const entityId = 'sensor.route_progress_preview';
       const map = helpers.createCardElement({ type: 'map', entities: [entityId], hours_to_show: 0, default_zoom: 14, aspect_ratio: '16:9' });
       const now = new Date().toISOString();
-      map.hass = { ...this._hass, states: { ...this._hass.states, [entityId]: {
+      const previewHass = { ...this._hass, states: { ...this._hass.states, [entityId]: {
         entity_id: entityId, state: target.name,
         attributes: { friendly_name: target.name, latitude: target.latitude, longitude: target.longitude, icon: 'mdi:map-marker' },
         last_changed: now, last_updated: now, context: { id: '', parent_id: null, user_id: null },
       } } };
+      // Modern ha-map consumes Lit's states context instead of the parent's
+      // hass property. Supply the same immutable preview to that subtree only.
+      // Other HA contexts continue bubbling to the real dashboard provider.
+      map.addEventListener('context-request', event => {
+        if (event.context !== 'states') return;
+        event.stopPropagation();
+        event.callback(previewHass.states, () => {});
+      });
+      map.hass = previewHass;
       container.replaceChildren(map);
     } catch {
       if (this.preview === target) container.textContent = this.t('Vorschau nicht verfügbar. Bitte „In Karten öffnen“ verwenden.', 'Preview unavailable. Please use Open in maps.');

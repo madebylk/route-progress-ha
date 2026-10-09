@@ -11,14 +11,37 @@ const card = document.querySelector('route-progress-card');
 const state = {manual:true,destination:null,status:'idle',active:false,available:true,can_start:false,can_accept:false,share_url:null,search_enabled:true,zones:[{id:'zone.home',name:'Zuhause',latitude:53.55,longitude:10.01,source:'zone'},{id:'zone.work',name:'Arbeit',latitude:53.56,longitude:10.02,source:'zone'}]};
 const result = {id:'result-1',name:'Hamburg Hauptbahnhof',address:'Hachmannplatz 16, 20099 Hamburg',latitude:53.5528,longitude:10.0067,source:'geoapify'};
 window.requests=[];
+// Model the modern HA map's nested context consumer, not just map.hass.
+document.addEventListener('context-request', event => {
+  if (event.context === 'states') event.callback({});
+  if (event.context === 'hassUi') event.callback({theme: 'test'});
+});
+customElements.define('test-ha-map', class extends HTMLElement {
+  connectedCallback() {
+    for (const context of ['states', 'hassUi']) {
+      const event = new Event('context-request', {bubbles:true, composed:true});
+      event.context = context;
+      event.subscribe = true;
+      event.callback = (value, unsubscribe) => {
+        if (context === 'states') {
+          this.unsubscribe = unsubscribe;
+          window.mapTarget = value['sensor.route_progress_preview'];
+          this.textContent = window.mapTarget ? 'Destination marker: ' + window.mapTarget.state : 'No marker';
+        } else window.mapTheme = value.theme;
+      };
+      this.dispatchEvent(event);
+    }
+  }
+  disconnectedCallback() { this.unsubscribe?.(); }
+});
 window.loadCardHelpers = async () => ({createCardElement: config => {
   window.mapConfig = config;
   const map = document.createElement('div');
   map.style.cssText = 'height:180px;background:#dde9de;display:grid;place-items:center';
   Object.defineProperty(map, 'hass', {set: value => {
-    window.mapTarget = value.states.sensor_route_progress_preview || value.states['sensor.route_progress_preview'];
-    map.textContent = 'HA map boundary: ' + window.mapTarget.state;
+    window.legacyMapTarget = value.states['sensor.route_progress_preview'];
   }});
+  map.attachShadow({mode:'open'}).append(document.createElement('test-ha-map'));
   return map;
 }});
 card.setConfig({type:'custom:route-progress-card',title:'Meine Fahrt'});
