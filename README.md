@@ -7,6 +7,17 @@
 
 Route Progress turns Home Assistant journey data into a polished live page that you can share with friends and family. Recipients need no account and no app: one temporary, read-only link shows where the journey stands and what to expect next.
 
+> [!IMPORTANT]
+> **This integration requires a separate, non-public Route Progress server component.** This repository contains only the Home Assistant integration; the server source code is not publicly available and the server is not included in the HACS or manual installation. You need access to an existing server, its service URL, and credentials from its operator before you can use the integration. Installing this integration alone does not provide a working Route Progress service.
+
+## How the components fit together
+
+- **Home Assistant integration (this repository):** reads your selected entities, sends journey data to the server, and provides share controls and the resulting link in Home Assistant.
+- **Route Progress server (non-public, required):** processes journey data, manages shares and their expiry, and serves the live pages shown in the screenshots below.
+- **Shared page:** friends and family open the temporary link in their browser, without a Home Assistant account or app.
+
+The screenshots show the server-hosted pages that become available when the integration is connected to that server.
+
 ![Route Progress live journey with the complete road route, driven track, current vehicle position, destination, ETA, and remaining distance](docs/images/showcase-live-route-desktop.png)
 
 The map makes progress immediately understandable: the driven section is grey, the remaining road route is blue, and the live vehicle marker sits between the start and destination. ETA, remaining time, distance, traffic delay, and charging time stay visible above the map.
@@ -60,10 +71,9 @@ All screenshots above were captured from real, locally running Route Progress de
 - German and English user interface
 - Configurable update interval from 10 to 300 seconds
 
-This repository contains only the open-source Home Assistant integration. The Route Progress service is maintained separately and is not installed by this repository. Using the integration requires a service URL and credentials supplied by the service operator.
-
 ## Requirements
 
+- Access to the **separate, non-public Route Progress server component**; this repository cannot be used to install or self-host that server
 - Home Assistant with HACS, or support for manual custom-integration installation
 - URL of a reachable Route Progress service
 - API token issued for this Home Assistant instance
@@ -72,6 +82,8 @@ This repository contains only the open-source Home Assistant integration. The Ro
 
 ## Installation with HACS
 
+Before installing, make sure you already have server access and credentials from the service operator. HACS installs only the Home Assistant integration.
+
 1. Use the **Open in HACS** badge above, or add https://github.com/madebylk/route-progress-ha to HACS as a custom repository of type **Integration**.
 2. Install **Route Progress** in HACS.
 3. Restart Home Assistant.
@@ -79,11 +91,11 @@ This repository contains only the open-source Home Assistant integration. The Ro
 
 ## Manual installation
 
-Copy custom_components/route_progress to /config/custom_components/route_progress and restart Home Assistant. Updates must also be installed manually when using this method.
+With server access and credentials already available, copy custom_components/route_progress to /config/custom_components/route_progress and restart Home Assistant. This installs only the integration. Updates must also be installed manually when using this method.
 
 ## Setup
 
-First enter the service URL, API token, and an update interval between 10 and 300 seconds. Enable **Use Cloudflare Access** and enter the supplied client ID and client secret when required.
+Enter the service URL and API token supplied by your Route Progress server operator, and an update interval between 10 and 300 seconds. Enable **Use Cloudflare Access** and enter the supplied client ID and client secret when required. These credentials must come from the existing server; installing the integration does not create them.
 
 Then select data sources through Home Assistant entity selectors.
 
