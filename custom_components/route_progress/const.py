@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "route_progress"
-PLATFORMS = ["binary_sensor", "button", "sensor"]
+PLATFORMS = ["binary_sensor", "button", "sensor", "text", "select"]
 
 CONF_API_TOKEN = "api_token"
 CONF_BASE_URL = "base_url"

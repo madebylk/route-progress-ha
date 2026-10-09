@@ -190,13 +190,32 @@ Multiple cards control the **same single integration and shared trip**, not sepa
 - **Paste a Google Maps link:** use **Share → Copy link** on a single place in Google Maps. Supported `maps.app.goo.gl` and `goo.gl/maps` short links are expanded inside Home Assistant. Explicit destination coordinates are used directly; address-only links are searched with Geoapify. A Maps viewport is never treated as the target. Multi-stop/directions links without a single explicit destination, opaque place-ID-only links and unsupported formats are rejected with guidance to paste a place link or search the address.
 - **HA zone:** select an existing zone to use its name and coordinates without a Geoapify request.
 
-Check the name, address and map preview, then choose **Use destination → Share trip**. Selecting/searching alone never creates a public link. The OpenStreetMap preview sends the selected map location to OpenStreetMap; Geoapify attribution remains visible with its results. Use **Copy link** or the device's **Share link** action to send the share yourself.
+After selecting a result, the list collapses and the pending choice shows its name and full address. Check these details, optionally expand the native HA map preview or use **Open in maps**, then choose **Use destination → Share trip**. Selecting/searching alone never creates a public link. The optional HA map preview loads tiles through Home Assistant’s usual map provider; opening the external map sends the location to OpenStreetMap; Geoapify attribution remains visible with its results. Use **Copy link** or the device's **Share link** action to send the share yourself.
+
+### Use standard HA entities instead of the custom card
+
+Manual mode also creates the following entities on the integration's device. Add them to a normal **Entities** dashboard card using HA's entity picker; the actual entity IDs depend on your language and registry names. The custom Route Progress card is optional.
+
+| Entity | Purpose |
+| --- | --- |
+| Text: Destination search / Maps link | Submit an address or Maps link. A submitted value performs one search, not one request per keystroke. Emptying it clears the search results. |
+| Select: Use search result | Choose an explicitly numbered result with its address. Choosing an option saves that destination, and confirms a destination change during an active share. |
+| Select: HA zone destination | Choose a zone by name and entity ID without Geoapify. The zone's coordinates are copied when selected. |
+| Sensor: Selected destination | Saved destination name, with `latitude`, `longitude`, `address`, `source` and provider attribution attributes. Also usable in the standard HA Map card. |
+| Buttons: Start share / Finish share | Start sharing the saved destination, or finish the current share. |
+
+**Workflow:** submit the text value → choose a search result (or choose a HA zone directly) → check **Selected destination** → press **Start share**. No first result is chosen automatically, including coordinate links. Search results expire after ten minutes and are not restored after restart; repeat the search if expired. The confirmed target is restored. Search and zone selection work while the Route Progress server is offline; starting/sharing still requires that server.
+
+The text entity accepts up to **255 characters**, matching HA's entity-state limit. Use a Google Maps short link or the custom card for longer links (up to 4096 characters). All cards and entities share one destination and journey. Entity searches/results are shared among users with access to those entities, so grant read/control permissions accordingly.
+
+Automations can use the standard `text.set_value`, `select.select_option` and `button.press` actions with these entities. Choose a specific result from the select entity's `options` attribute; do not blindly select the first geocoding match. For predictable automations prefer the zone selector. No Geoapify key belongs in an automation or dashboard.
+
 
 ### 4. Keep the journey predictable
 
 The chosen destination is saved in Home Assistant and survives restarts. A zone is copied when selected: later zone edits do not silently move an active journey's target. During a share, selecting another target and pressing **Change trip destination** explicitly accepts that change. If the server is unavailable, the chosen target stays saved; retry or use **Accept new destination** after reconnection if confirmation remains pending.
 
-The normal server destination-confirmation period still applies when a new share starts. Missing vehicle navigation entities do not pause a manually selected target. Position timestamps still reflect real GPS observations; reducing the integration interval cannot make the phone report new GPS coordinates. Enable the appropriate background location permissions in the Companion App and monitor position freshness.
+With server v0.14.0 or later, a manually selected target is explicitly confirmed when sharing starts, without the one-minute stabilization period used for automatic navigation entities. Older servers retain their previous confirmation flow; update the server and reload the integration to enable immediate confirmation. “Sharing active” means that the public share is running, not that vehicle movement has been detected. “Confirming navigation destination” means the older/automatic flow is still waiting for stable destination data and a fresh source observation. Missing vehicle navigation entities do not pause a manually selected target. Position timestamps still reflect real GPS observations; reducing the integration interval cannot make the phone report new GPS coordinates. Enable the appropriate background location permissions in the Companion App and monitor position freshness.
 
 With an updated Route Progress server, absent ETA/distance values are filled from road-routing estimates and marked as estimates. The estimated time is scaled as the remaining route shortens and does not include live traffic or charging plans. Supplied vehicle metrics take precedence. If routing fails or the server is older, these values may remain unavailable. Leave destination-dependent vehicle metrics (ETA, remaining distance, traffic, charging plan, arrival battery) unconfigured when they refer to a different navigation target.
 

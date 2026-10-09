@@ -48,11 +48,11 @@ async def async_setup_dashboard(hass, manager):
             # A search outage must not disable server sharing or HA zones.
             pass
     data["results"] = {}
-    frontend.add_extra_js_url(hass, STATIC_URL + "?v=0.14.0")
+    frontend.add_extra_js_url(hass, STATIC_URL + "?v=0.15.0")
 
 
 def async_unload_dashboard(hass):
-    frontend.remove_extra_js_url(hass, STATIC_URL + "?v=0.14.0")
+    frontend.remove_extra_js_url(hass, STATIC_URL + "?v=0.15.0")
     data = hass.data.get(DOMAIN, {})
     data.pop("manager", None)
     data.pop("lookup", None)

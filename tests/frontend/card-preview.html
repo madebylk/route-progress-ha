@@ -4,10 +4,23 @@ body{margin:0;padding:24px;background:#f2f4f8;font-family:Arial,sans-serif;--pri
 </style><main><h1>Dashboard card · simulated Home Assistant</h1><button id="width">Mobile / Desktop</button><route-progress-card></route-progress-card></main>
 <script type="module">
 import '/custom_components/route_progress/frontend/route-progress-card.js';
+customElements.define('ha-card', class extends HTMLElement {
+  constructor() { super(); this.attachShadow({mode:'open'}).innerHTML = '<style>:host{display:block;background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:12px;overflow:hidden}</style><slot></slot>'; }
+});
 const card = document.querySelector('route-progress-card');
 const state = {manual:true,destination:null,status:'idle',active:false,available:true,can_start:false,can_accept:false,share_url:null,search_enabled:true,zones:[{id:'zone.home',name:'Zuhause',latitude:53.55,longitude:10.01,source:'zone'},{id:'zone.work',name:'Arbeit',latitude:53.56,longitude:10.02,source:'zone'}]};
 const result = {id:'result-1',name:'Hamburg Hauptbahnhof',address:'Hachmannplatz 16, 20099 Hamburg',latitude:53.5528,longitude:10.0067,source:'geoapify'};
 window.requests=[];
+window.loadCardHelpers = async () => ({createCardElement: config => {
+  window.mapConfig = config;
+  const map = document.createElement('div');
+  map.style.cssText = 'height:180px;background:#dde9de;display:grid;place-items:center';
+  Object.defineProperty(map, 'hass', {set: value => {
+    window.mapTarget = value.states.sensor_route_progress_preview || value.states['sensor.route_progress_preview'];
+    map.textContent = 'HA map boundary: ' + window.mapTarget.state;
+  }});
+  return map;
+}});
 card.setConfig({type:'custom:route-progress-card',title:'Meine Fahrt'});
 card.hass = {language:'de',callWS:async msg => {
   window.requests.push(msg);

@@ -13,10 +13,19 @@ const assert = require('node:assert/strict');
   const card = page.locator('route-progress-card');
   await card.locator('#selected').waitFor();
   assert.equal(await card.locator('#start').isDisabled(), true);
+  assert.equal(await card.locator('h1').count(), 0);
+  assert.equal(await card.locator('#finish').isVisible(), false);
   await card.locator('#query').fill('Hamburg');
   await card.getByRole('button', { name: 'Hamburg Hauptbahnhof Hachmannplatz' }).waitFor();
   await card.locator('.result').click();
   assert.equal(await card.locator('#preview-name').innerText(), 'Hamburg Hauptbahnhof');
+  assert.equal(await card.locator('.result').count(), 0, 'results collapse after selection');
+  assert.equal(await card.locator('#message').innerText(), '');
+  await card.locator('#map-details summary').click();
+  await page.waitForFunction(() => window.mapTarget);
+  assert.equal(await page.evaluate(() => window.mapTarget.attributes.latitude), 53.5528);
+  assert.equal(await card.locator('iframe').count(), 0);
+  assert.equal(await card.locator('#map-link').getAttribute('href').then(url => url.includes('53.5528')), true);
   await card.locator('#confirm').click();
   await card.locator('#start:not([disabled])').waitFor();
   assert.equal(await page.evaluate(() => window.requests.filter(r => r.action === 'start').length), 0);
@@ -24,6 +33,10 @@ const assert = require('node:assert/strict');
   await card.locator('#share:not([hidden])').waitFor();
   assert.equal(await card.locator('#share-url').inputValue(), 'https://example.com/t/test');
   await card.getByRole('button', { name: 'Zuhause', exact: true }).click();
+  assert.equal(await card.getByRole('button', {name:'Zuhause',exact:true}).getAttribute('aria-pressed'), 'true');
+  await page.evaluate(() => { window.loadCardHelpers = async () => { throw Error('unavailable'); }; });
+  await card.locator('#map-details summary').click();
+  await card.locator('#preview-map').filter({hasText:'Vorschau nicht verfügbar'}).waitFor();
   assert.equal(await card.locator('#confirm').innerText(), 'Fahrtziel ändern');
   await card.locator('#confirm').click();
   await card.locator('#selected').filter({ hasText: 'Zuhause' }).waitFor();
@@ -46,6 +59,24 @@ const assert = require('node:assert/strict');
   });
   assert.equal(editorOK, true);
   assert.deepEqual(errors, []);
+  for (const width of [320, 420, 800]) {
+    await page.setViewportSize({width, height:1000});
+    await card.getByRole('button', {name:'Zuhause',exact:true}).click();
+    assert.equal(await card.locator('#start').isDisabled(), true, 'pending preview must not start the previous target');
+    assert.equal(await page.evaluate(() => {
+      const card = document.querySelector('route-progress-card');
+      return card.shadowRoot.querySelector('ha-card').scrollWidth > card.clientWidth;
+    }), false, `card overflow at ${width}px`);
+  }
+  await page.setViewportSize({width:420,height:1000});
+  if (process.env.ROUTE_PROGRESS_SCREENSHOT) await page.screenshot({path:process.env.ROUTE_PROGRESS_SCREENSHOT.replace('.png','-selection.png'),fullPage:true});
+  await page.evaluate(() => {
+    document.body.style.setProperty('--card-background-color','#1c1c1c');
+    document.body.style.setProperty('--primary-text-color','#eeeeee');
+    document.body.style.setProperty('--secondary-text-color','#bbbbbb');
+    document.body.style.setProperty('--divider-color','#444444');
+  });
+  if (process.env.ROUTE_PROGRESS_SCREENSHOT) await page.screenshot({path:process.env.ROUTE_PROGRESS_SCREENSHOT.replace('.png','-dark.png'),fullPage:true});
   console.log('Card browser smoke passed: search, preview, selection, start, change, errors, stale results, finish, mobile layout, editor.');
  } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode=1; });

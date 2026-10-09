@@ -145,6 +145,21 @@
   "exceptions": {
     "route_data_required": {
       "message": "A valid destination and vehicle position are required before a share can be started."
+    },
+    "invalid_query": {
+      "message": "Enter 3 to 255 characters. Longer Maps links can be pasted in the Route Progress card."
+    },
+    "destination_lookup_failed": {
+      "message": "Destination lookup failed: {error}. Check Geoapify connectivity or the link."
+    },
+    "no_results": {
+      "message": "No results. Please enter a more specific place or address."
+    },
+    "result_expired": {
+      "message": "The result expired. Please search again."
+    },
+    "zone_not_allowed": {
+      "message": "No read permission for this HA zone."
     }
   },
   "entity": {
@@ -166,6 +181,9 @@
           "manually_finished": "Manually finished",
           "expired": "Expired"
         }
+      },
+      "selected_destination": {
+        "name": "Selected destination"
       }
     },
     "binary_sensor": {
@@ -188,6 +206,19 @@
       },
       "finish": {
         "name": "Finish share"
+      }
+    },
+    "text": {
+      "destination_query": {
+        "name": "Destination search / Maps link"
+      }
+    },
+    "select": {
+      "destination_result": {
+        "name": "Use search result"
+      },
+      "destination_zone": {
+        "name": "HA zone destination"
       }
     }
   },

@@ -103,6 +103,16 @@ class RouteProgressAPI:
         )
         return self._require_state(content) if status == 200 else None
 
+    async def async_confirm_initial_destination(self, trip_id, payload):
+        """Confirm explicit intent; older servers retain their automatic flow."""
+        status, content = await self._async_request(
+            "POST",
+            f"/api/v1/trips/{trip_id}/destination",
+            expected={200, 409},
+            json=payload,
+        )
+        return self._require_state(content) if status == 200 else None
+
     @staticmethod
     def _require_state(content: Any) -> dict[str, Any]:
         """Validate a lifecycle response."""
@@ -160,5 +170,7 @@ class RouteProgressAPI:
         except RouteProgressAPIError:
             raise
         except (ClientError, TimeoutError) as err:
-            _LOGGER.debug("API transport error: method=%s path=%s error=%r", method, path, err)
+            _LOGGER.debug(
+                "API transport error: method=%s path=%s error=%r", method, path, err
+            )
             raise RouteProgressAPIError("Could not connect to Route Progress") from err

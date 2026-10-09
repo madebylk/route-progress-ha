@@ -20,9 +20,39 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Route Progress share URL sensor."""
     manager = entry.runtime_data
-    async_add_entities(
-        [RouteProgressShareURLSensor(manager), RouteProgressStatusSensor(manager)]
-    )
+    entities = [
+        RouteProgressShareURLSensor(manager),
+        RouteProgressStatusSensor(manager),
+    ]
+    if manager.manual_mode:
+        entities.append(RouteProgressDestinationSensor(manager))
+    async_add_entities(entities)
+
+
+class RouteProgressDestinationSensor(RouteProgressEntity, SensorEntity):
+    """The selected target, also suitable for the standard HA map card."""
+
+    _attr_translation_key = "selected_destination"
+    _attr_icon = "mdi:map-marker-check-outline"
+    _attr_should_poll = False
+
+    def __init__(self, manager):
+        super().__init__(manager, "selected_destination")
+
+    @property
+    def available(self):
+        return self.manager.manual_mode
+
+    @property
+    def native_value(self):
+        return (self.manager.manual_destination or {}).get("name", "")[:255] or None
+
+    @property
+    def extra_state_attributes(self):
+        target = dict(self.manager.manual_destination or {})
+        if target.get("source") == "geoapify":
+            target["attribution"] = "Powered by Geoapify | © OpenStreetMap contributors"
+        return target
 
 
 class RouteProgressShareURLSensor(RouteProgressEntity, SensorEntity):

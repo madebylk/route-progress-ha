@@ -87,6 +87,10 @@ class RouteProgressManager:
         self.last_error: str | None = None
         self.available = True
         self.geoapify = None
+        self.destination_query = ""
+        self.destination_results = {}
+        self.destination_results_until = 0.0
+        self._initial_confirmation_supported = True
         self.manual_destination: dict[str, Any] | None = None
         self.manual_destination_updated_at: datetime | None = None
 
@@ -246,7 +250,7 @@ class RouteProgressManager:
                 return
             if self.manual_mode and self.manual_destination is None:
                 raise HomeAssistantError(
-                    "Choose a destination in the Route Progress dashboard card first."
+                    "Choose a destination using the card or destination entities first."
                 )
             snapshot = self._snapshot(track_position=True)
             await self._async_create(snapshot)
@@ -366,6 +370,23 @@ class RouteProgressManager:
         )
         try:
             result = await self.api.async_update_trip(self.trip_id, payload)
+            if (
+                self.manual_mode
+                and self._initial_confirmation_supported
+                and snapshot.destination_valid
+                and result.get("status")
+                in {"waiting_for_destination", "confirming_destination"}
+            ):
+                confirmed = await self.api.async_confirm_initial_destination(
+                    self.trip_id, snapshot.create_payload()["destination"]
+                )
+                if confirmed:
+                    self._apply_server_state(confirmed)
+                    result = confirmed
+                    # Reuse the real observation timestamps, including stale GPS.
+                    result = await self.api.async_update_trip(self.trip_id, payload)
+                else:
+                    self._initial_confirmation_supported = False
         except RouteProgressGoneError:
             await self._async_clear("expired")
             return

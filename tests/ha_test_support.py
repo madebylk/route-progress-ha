@@ -54,7 +54,8 @@ class Selector:
 
 
 class HAError(Exception):
-    pass
+    def __init__(self, message="", **kwargs):
+        super().__init__(message or kwargs.get("translation_key", ""))
 
 
 def load_modules():
@@ -150,6 +151,13 @@ def load_modules():
         BinarySensorEntity=type("BinarySensorEntity", (), {}),
         BinarySensorDeviceClass=types.SimpleNamespace(CONNECTIVITY="connectivity"),
     )
+    module("homeassistant.components.text", TextEntity=type("TextEntity", (), {}))
+    module("homeassistant.components.select", SelectEntity=type("SelectEntity", (), {}))
+    module(
+        "homeassistant.components.sensor",
+        SensorEntity=type("SensorEntity", (), {}),
+        SensorDeviceClass=types.SimpleNamespace(ENUM="enum"),
+    )
     helpers.entity_registry = module(
         "homeassistant.helpers.entity_registry", async_get=lambda hass: hass.registry
     )
@@ -171,6 +179,9 @@ def load_modules():
         dashboard.test_binary_sensor = importlib.import_module(
             package.__name__ + ".binary_sensor"
         )
+        dashboard.test_text = importlib.import_module(package.__name__ + ".text")
+        dashboard.test_select = importlib.import_module(package.__name__ + ".select")
+        dashboard.test_sensor = importlib.import_module(package.__name__ + ".sensor")
     return manager, config, dashboard
 
 
@@ -190,6 +201,7 @@ def make_manager(manual=True):
     )
     entry = types.SimpleNamespace(entry_id="test", data={}, options={})
     api = types.SimpleNamespace(
+        base_url="https://example.com",
         async_create_trip=AsyncMock(
             return_value={
                 "trip_id": "trip",
@@ -203,6 +215,7 @@ def make_manager(manual=True):
             return_value={"status": "confirming_destination", "accepts_updates": True}
         ),
         async_check_auth=AsyncMock(),
+        async_confirm_initial_destination=AsyncMock(return_value=None),
     )
     config = {"vehicle_position_entity": "device_tracker.phone"}
     if manual:

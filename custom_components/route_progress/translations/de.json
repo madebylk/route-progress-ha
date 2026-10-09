@@ -145,6 +145,21 @@
   "exceptions": {
     "route_data_required": {
       "message": "Vor dem Starten einer Freigabe werden ein gültiges Ziel und eine gültige Fahrzeugposition benötigt."
+    },
+    "invalid_query": {
+      "message": "Bitte 3 bis 255 Zeichen eingeben. Längere Maps-Links können in der Route-Progress-Karte eingefügt werden."
+    },
+    "destination_lookup_failed": {
+      "message": "Zielsuche fehlgeschlagen: {error}. Bitte Geoapify-Verbindung oder Link prüfen."
+    },
+    "no_results": {
+      "message": "Keine Treffer. Bitte Ort und Adresse genauer angeben."
+    },
+    "result_expired": {
+      "message": "Der Treffer ist abgelaufen. Bitte erneut suchen."
+    },
+    "zone_not_allowed": {
+      "message": "Keine Leseberechtigung für diese HA-Zone."
     }
   },
   "entity": {
@@ -166,6 +181,9 @@
           "manually_finished": "Manuell beendet",
           "expired": "Abgelaufen"
         }
+      },
+      "selected_destination": {
+        "name": "Gewähltes Ziel"
       }
     },
     "binary_sensor": {
@@ -188,6 +206,19 @@
       },
       "finish": {
         "name": "Freigabe beenden"
+      }
+    },
+    "text": {
+      "destination_query": {
+        "name": "Zielsuche / Maps-Link"
+      }
+    },
+    "select": {
+      "destination_result": {
+        "name": "Suchtreffer übernehmen"
+      },
+      "destination_zone": {
+        "name": "HA-Zone als Ziel"
       }
     }
   },
