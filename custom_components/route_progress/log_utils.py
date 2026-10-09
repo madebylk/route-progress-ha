@@ -6,6 +6,8 @@ from typing import Any
 
 _REDACTED = "<redacted>"
 _SENSITIVE_KEYS = {
+    "geoapify_api_key",
+    "apikey",
     "api_token",
     "cloudflare_client_secret",
     "share_url",

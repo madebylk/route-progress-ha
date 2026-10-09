@@ -11,6 +11,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_ON
 from homeassistant.core import Event, HomeAssistant, State, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
@@ -30,6 +31,7 @@ from .const import (
     CONF_CHARGING_MINUTES_ENTITY,
     CONF_DESTINATION_ENTITY,
     CONF_DESTINATION_POSITION_ENTITY,
+    CONF_DESTINATION_SOURCE,
     CONF_DISTANCE_ENTITY,
     CONF_ETA_ENTITY,
     CONF_HEADING_ENTITY,
@@ -39,8 +41,11 @@ from .const import (
     CONF_VEHICLE_POSITION_ENTITY,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    SOURCE_ENTITIES,
+    SOURCE_MANUAL,
     UNKNOWN_STATES,
 )
+from .destination import DestinationError, point_result
 from .log_utils import redact_secrets
 from .models import (
     DestinationObservationState,
@@ -81,6 +86,8 @@ class RouteProgressManager:
         self.last_successful_connection: datetime | None = None
         self.last_error: str | None = None
         self.available = True
+        self.manual_destination: dict[str, Any] | None = None
+        self.manual_destination_updated_at: datetime | None = None
 
         self._store: Store[dict[str, Any]] = Store(
             hass, 1, f"{DOMAIN}.{entry.entry_id}"
@@ -93,6 +100,12 @@ class RouteProgressManager:
         self._cancel_position_sync: Callable[[], None] | None = None
 
     @property
+    def manual_mode(self) -> bool:
+        return (
+            self.config.get(CONF_DESTINATION_SOURCE, SOURCE_ENTITIES) == SOURCE_MANUAL
+        )
+
+    @property
     def active(self) -> bool:
         """Return whether a trip is currently tracked."""
         return self.trip_id is not None and self.accepts_updates
@@ -100,7 +113,11 @@ class RouteProgressManager:
     @property
     def can_start(self) -> bool:
         """Return whether a waiting share can be created."""
-        return self.available and not self.active
+        return (
+            self.available
+            and not self.active
+            and (not self.manual_mode or self.manual_destination is not None)
+        )
 
     @property
     def can_accept_destination(self) -> bool:
@@ -120,6 +137,19 @@ class RouteProgressManager:
     async def async_load(self) -> None:
         """Restore the active trip state after a HA restart."""
         data = await self._store.async_load() or {}
+        if self.manual_mode and isinstance(data.get("manual_destination"), dict):
+            try:
+                target = data["manual_destination"]
+                self.manual_destination = point_result(
+                    target.get("name", ""),
+                    target.get("latitude"),
+                    target.get("longitude"),
+                )
+                self.manual_destination_updated_at = dt_util.parse_datetime(
+                    data.get("manual_destination_updated_at") or ""
+                )
+            except DestinationError:
+                self.manual_destination = None
         self.trip_id = _optional_string(data.get("trip_id"))
         self.share_url = _optional_string(data.get("share_url"))
         self.expires_at = _optional_string(data.get("expires_at"))
@@ -217,8 +247,38 @@ class RouteProgressManager:
         async with self._lock:
             if self.active:
                 return
+            if self.manual_mode and self.manual_destination is None:
+                raise HomeAssistantError(
+                    "Choose a destination in the Route Progress dashboard card first."
+                )
             snapshot = self._snapshot(track_position=True)
             await self._async_create(snapshot)
+
+    async def async_select_destination(self, destination: dict[str, Any]) -> None:
+        """Persist an explicitly confirmed manual target without starting a share."""
+        if not self.manual_mode:
+            raise HomeAssistantError("Manual destinations are disabled.")
+        async with self._lock:
+            self.manual_destination = point_result(
+                destination["name"], destination["latitude"], destination["longitude"]
+            )
+            self.manual_destination_updated_at = dt_util.utcnow()
+            await self._async_save_and_notify()
+            if self.active:
+                snapshot = self._snapshot(track_position=True)
+                await self._async_update(snapshot)
+                if self.status == "destination_changed" and self.available:
+                    # Selecting a target in the card is the explicit consent.
+                    try:
+                        result = await self.api.async_accept_destination(
+                            self.trip_id, snapshot.create_payload()["destination"]
+                        )
+                    except RouteProgressAPIError as err:
+                        self._mark_error(err)
+                    else:
+                        self._apply_server_state(result)
+                        self._mark_success()
+                        await self._async_save_and_notify()
 
     async def async_accept_destination(self) -> None:
         """Explicitly replace the server-owned shared destination."""
@@ -226,7 +286,10 @@ class RouteProgressManager:
             if not self.trip_id:
                 return
             snapshot = self._snapshot(track_position=True)
-            if snapshot.navigation_presence != "present" or not snapshot.destination_valid:
+            if (
+                snapshot.navigation_presence != "present"
+                or not snapshot.destination_valid
+            ):
                 return
             try:
                 result = await self.api.async_accept_destination(
@@ -358,6 +421,12 @@ class RouteProgressManager:
                 "arrival_detection": self.arrival_detection,
                 "arrival_followup_until": self.arrival_followup_until,
                 "finished_at": self.finished_at,
+                "manual_destination": self.manual_destination
+                if self.manual_mode
+                else None,
+                "manual_destination_updated_at": self.manual_destination_updated_at.isoformat()
+                if self.manual_mode and self.manual_destination_updated_at
+                else None,
             }
         )
         self._notify_listeners()
@@ -390,6 +459,12 @@ class RouteProgressManager:
         destination_state = self._state(CONF_DESTINATION_ENTITY)
         destination_position = self._state(CONF_DESTINATION_POSITION_ENTITY)
         vehicle_position = self._state(CONF_VEHICLE_POSITION_ENTITY)
+        if (
+            self.manual_mode
+            and vehicle_position
+            and vehicle_position.state.lower() in UNKNOWN_STATES
+        ):
+            vehicle_position = None
 
         destination_name = ""
         destination_source_state = (
@@ -418,6 +493,12 @@ class RouteProgressManager:
         destination_latitude = destination_observation.latitude
         destination_longitude = destination_observation.longitude
         navigation_presence = destination_observation.navigation_presence
+        if self.manual_mode:
+            target = self.manual_destination or {}
+            destination_name = target.get("name", "")
+            destination_latitude = target.get("latitude")
+            destination_longitude = target.get("longitude")
+            navigation_presence = "present" if target else "absent"
 
         heading = self._number_state(CONF_HEADING_ENTITY)
         if heading is None and vehicle_position:
@@ -439,7 +520,9 @@ class RouteProgressManager:
             latitude=_attribute_number(vehicle_position, "latitude"),
             longitude=_attribute_number(vehicle_position, "longitude"),
             navigation_data_complete=(
-                destination_observation.navigation_data_complete
+                bool(self.manual_destination)
+                if self.manual_mode
+                else destination_observation.navigation_data_complete
             ),
             heading=heading,
             speed_kmh=speed,
@@ -461,6 +544,18 @@ class RouteProgressManager:
                 if state is not None
             ]
             snapshot.source_observed_at = max(source_times, default=None)
+            if self.manual_mode:
+                # A heartbeat is not evidence of a new GPS observation. Use
+                # real source timestamps so stale phones cannot imply arrival.
+                source_times = [
+                    value
+                    for value in (
+                        self.manual_destination_updated_at,
+                        vehicle_position.last_updated if vehicle_position else None,
+                    )
+                    if value is not None
+                ]
+                snapshot.source_observed_at = max(source_times, default=None)
         return snapshot
 
     def _state(self, config_key: str) -> State | None:

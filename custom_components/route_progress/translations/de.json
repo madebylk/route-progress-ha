@@ -4,16 +4,14 @@
     "step": {
       "user": {
         "title": "Route Progress einrichten",
-        "description": "Verbinde Home Assistant mit Route Progress. Als Pflicht markierte Entities müssen ausgewählt werden; optionale Routendaten dürfen leer bleiben.",
+        "description": "Verbindung und Standortquelle wählen. Im nächsten Schritt werden die Einstellungen für die gewählte Zielquelle angezeigt.",
         "data": {
           "base_url": "Route-Progress-URL",
           "api_token": "Home-Assistant-API-Token",
           "cloudflare_access_enabled": "Cloudflare Access verwenden",
           "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
-          "destination_entity": "Zielname-Entity (Pflicht)",
-          "destination_position_entity": "Zielpositions-Entity (Pflicht)",
-          "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
+          "vehicle_position_entity": "Standort (Fahrzeug oder Smartphone)",
           "update_interval": "Aktualisierungsintervall",
           "heading_entity": "Fahrtrichtungs-Entity (optional)",
           "speed_entity": "Geschwindigkeits-Entity (optional)",
@@ -22,12 +20,11 @@
           "traffic_delay_entity": "Verkehrsverzögerung (optional)",
           "charging_minutes_entity": "Geplante Lademinuten (optional)",
           "charging_entity": "Ladestatus-Entity (optional)",
-          "battery_at_arrival_entity": "Akku bei Ankunft (optional)"
+          "battery_at_arrival_entity": "Akku bei Ankunft (optional)",
+          "destination_source": "Zielquelle"
         },
         "data_description": {
-          "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
-          "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
-          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit.",
+          "vehicle_position_entity": "Entität mit latitude- und longitude-Attributen.",
           "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
           "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
           "cloudflare_client_secret": "Erforderlich, wenn Cloudflare Access aktiviert ist."
@@ -35,16 +32,14 @@
       },
       "reconfigure": {
         "title": "Route Progress neu konfigurieren",
-        "description": "Ändere Verbindung, Quell-Entities oder Aktualisierungsintervall. Alle Pflicht-Entities müssen ausgewählt bleiben.",
+        "description": "Verbindung und Standortquelle wählen. Im nächsten Schritt werden die Einstellungen für die gewählte Zielquelle angezeigt.",
         "data": {
           "base_url": "Route-Progress-URL",
           "api_token": "Home-Assistant-API-Token",
           "cloudflare_access_enabled": "Cloudflare Access verwenden",
           "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
-          "destination_entity": "Zielname-Entity (Pflicht)",
-          "destination_position_entity": "Zielpositions-Entity (Pflicht)",
-          "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
+          "vehicle_position_entity": "Standort (Fahrzeug oder Smartphone)",
           "update_interval": "Aktualisierungsintervall",
           "heading_entity": "Fahrtrichtungs-Entity (optional)",
           "speed_entity": "Geschwindigkeits-Entity (optional)",
@@ -53,15 +48,23 @@
           "traffic_delay_entity": "Verkehrsverzögerung (optional)",
           "charging_minutes_entity": "Geplante Lademinuten (optional)",
           "charging_entity": "Ladestatus-Entity (optional)",
-          "battery_at_arrival_entity": "Akku bei Ankunft (optional)"
+          "battery_at_arrival_entity": "Akku bei Ankunft (optional)",
+          "destination_source": "Zielquelle"
         },
         "data_description": {
-          "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
-          "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
-          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit.",
+          "vehicle_position_entity": "Entität mit latitude- und longitude-Attributen.",
           "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
           "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
           "cloudflare_client_secret": "Erforderlich, wenn Cloudflare Access aktiviert ist."
+        }
+      },
+      "destination": {
+        "title": "Zielquelle konfigurieren",
+        "description": "Bei manueller Zielwahl erfolgt die Suche direkt aus Home Assistant. Der optionale Geoapify-Schlüssel aktiviert die Adresssuche. HA-Zonen und Google-Maps-Links mit eindeutigen Zielkoordinaten funktionieren auch ohne Schlüssel. Füge die Route-Progress-Karte zu einem beliebigen Dashboard hinzu.",
+        "data": {
+          "geoapify_api_key": "Geoapify API-Schlüssel (optional)",
+          "destination_entity": "Entität für den Zielnamen",
+          "destination_position_entity": "Entität für die Zielkoordinaten"
         }
       }
     },
@@ -70,7 +73,8 @@
       "cloudflare_credentials_required": "Gib die Cloudflare Access Client-ID und das Client-Secret ein",
       "invalid_auth": "Das Home-Assistant-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
       "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
-      "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus"
+      "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus",
+      "active_trip": "Bitte die aktive Freigabe beenden, bevor die Zielquelle gewechselt wird."
     },
     "abort": {
       "single_instance_allowed": "Route Progress ist bereits eingerichtet",
@@ -81,16 +85,14 @@
     "step": {
       "init": {
         "title": "Route Progress konfigurieren",
-        "description": "Ändere Verbindung, Quell-Entities oder Aktualisierungsintervall. Alle Pflicht-Entities müssen ausgewählt bleiben.",
+        "description": "Verbindung und Standortquelle wählen. Im nächsten Schritt werden die Einstellungen für die gewählte Zielquelle angezeigt.",
         "data": {
           "base_url": "Route-Progress-URL",
           "api_token": "Home-Assistant-API-Token",
           "cloudflare_access_enabled": "Cloudflare Access verwenden",
           "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
-          "destination_entity": "Zielname-Entity (Pflicht)",
-          "destination_position_entity": "Zielpositions-Entity (Pflicht)",
-          "vehicle_position_entity": "Fahrzeugpositions-Entity (Pflicht)",
+          "vehicle_position_entity": "Standort (Fahrzeug oder Smartphone)",
           "update_interval": "Aktualisierungsintervall",
           "heading_entity": "Fahrtrichtungs-Entity (optional)",
           "speed_entity": "Geschwindigkeits-Entity (optional)",
@@ -99,15 +101,23 @@
           "traffic_delay_entity": "Verkehrsverzögerung (optional)",
           "charging_minutes_entity": "Geplante Lademinuten (optional)",
           "charging_entity": "Ladestatus-Entity (optional)",
-          "battery_at_arrival_entity": "Akku bei Ankunft (optional)"
+          "battery_at_arrival_entity": "Akku bei Ankunft (optional)",
+          "destination_source": "Zielquelle"
         },
         "data_description": {
-          "destination_entity": "Der Zustand dieser Entity enthält den Namen des Ziels.",
-          "destination_position_entity": "Diese Entity stellt die Attribute latitude und longitude des Ziels bereit.",
-          "vehicle_position_entity": "Diese Entity stellt die aktuellen Attribute latitude und longitude des Fahrzeugs bereit.",
+          "vehicle_position_entity": "Entität mit latitude- und longitude-Attributen.",
           "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
           "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
           "cloudflare_client_secret": "Erforderlich, wenn Cloudflare Access aktiviert ist."
+        }
+      },
+      "destination": {
+        "title": "Zielquelle konfigurieren",
+        "description": "Bei manueller Zielwahl erfolgt die Suche direkt aus Home Assistant. Der optionale Geoapify-Schlüssel aktiviert die Adresssuche. HA-Zonen und Google-Maps-Links mit eindeutigen Zielkoordinaten funktionieren auch ohne Schlüssel. Füge die Route-Progress-Karte zu einem beliebigen Dashboard hinzu.",
+        "data": {
+          "geoapify_api_key": "Geoapify API-Schlüssel (optional)",
+          "destination_entity": "Entität für den Zielnamen",
+          "destination_position_entity": "Entität für die Zielkoordinaten"
         }
       }
     },
@@ -116,7 +126,8 @@
       "cloudflare_credentials_required": "Gib die Cloudflare Access Client-ID und das Client-Secret ein",
       "invalid_auth": "Das Home-Assistant-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
       "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
-      "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus"
+      "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus",
+      "active_trip": "Bitte die aktive Freigabe beenden, bevor die Zielquelle gewechselt wird."
     }
   },
   "exceptions": {
@@ -126,7 +137,9 @@
   },
   "entity": {
     "sensor": {
-      "share_url": {"name": "Freigabelink"},
+      "share_url": {
+        "name": "Freigabelink"
+      },
       "share_status": {
         "name": "Freigabestatus",
         "state": {
@@ -144,13 +157,31 @@
       }
     },
     "binary_sensor": {
-      "active": {"name": "Aktive Freigabe"},
-      "cloud_connection": {"name": "Cloud-Verbindung"}
+      "active": {
+        "name": "Aktive Freigabe"
+      },
+      "cloud_connection": {
+        "name": "Cloud-Verbindung"
+      }
     },
     "button": {
-      "start": {"name": "Freigabe starten"},
-      "accept_destination": {"name": "Neues Ziel übernehmen"},
-      "finish": {"name": "Freigabe beenden"}
+      "start": {
+        "name": "Freigabe starten"
+      },
+      "accept_destination": {
+        "name": "Neues Ziel übernehmen"
+      },
+      "finish": {
+        "name": "Freigabe beenden"
+      }
+    }
+  },
+  "selector": {
+    "destination_source": {
+      "options": {
+        "entities": "Automatisch aus Entitäten",
+        "manual": "Manuell: Suche, Maps-Link oder HA-Zone"
+      }
     }
   }
 }

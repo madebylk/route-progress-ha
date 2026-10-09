@@ -1,14 +1,19 @@
 {
   "domain": "route_progress",
   "name": "Route Progress",
-  "codeowners": ["@madebylk"],
+  "codeowners": [
+    "@madebylk"
+  ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "frontend",
+    "http"
+  ],
   "documentation": "https://github.com/madebylk/route-progress-ha",
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/madebylk/route-progress-ha/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.13.1"
+  "version": "0.14.0"
 }

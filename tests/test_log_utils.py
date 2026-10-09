@@ -30,6 +30,12 @@ redact_secrets = _load_log_utils_module().redact_secrets
 class RedactSecretsTest(unittest.TestCase):
     """Verify share credentials never reach formatted debug data."""
 
+    def test_redacts_geoapify_credentials(self) -> None:
+        self.assertEqual(
+            redact_secrets({"geoapify_api_key": "secret", "apiKey": "secret"}),
+            {"geoapify_api_key": "<redacted>", "apiKey": "<redacted>"},
+        )
+
     def test_redacts_create_response_without_mutating_runtime_data(self) -> None:
         response = {
             "trip_id": "trip-1",

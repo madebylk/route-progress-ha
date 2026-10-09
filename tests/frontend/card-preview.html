@@ -1,0 +1,21 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Route Progress card test fixture</title>
+<style>
+body{margin:0;padding:24px;background:#f2f4f8;font-family:Arial,sans-serif;--primary-background-color:#f2f4f8;--card-background-color:white;--primary-text-color:#202b3a;--secondary-text-color:#617084;--divider-color:#dfe5ed;--primary-color:#1468cd;--text-primary-color:#fff}ha-card{display:block;background:white;border:1px solid #dfe5ed;border-radius:16px;overflow:hidden}main{max-width:480px;margin:auto}h1{font-size:16px}button{font:inherit}#width{margin-bottom:20px}
+</style><main><h1>Dashboard card · simulated Home Assistant</h1><button id="width">Mobile / Desktop</button><route-progress-card></route-progress-card></main>
+<script type="module">
+import '/custom_components/route_progress/frontend/route-progress-card.js';
+const card = document.querySelector('route-progress-card');
+const state = {manual:true,destination:null,status:'idle',active:false,available:true,can_start:false,can_accept:false,share_url:null,search_enabled:true,zones:[{id:'zone.home',name:'Zuhause',latitude:53.55,longitude:10.01,source:'zone'},{id:'zone.work',name:'Arbeit',latitude:53.56,longitude:10.02,source:'zone'}]};
+const result = {id:'result-1',name:'Hamburg Hauptbahnhof',address:'Hachmannplatz 16, 20099 Hamburg',latitude:53.5528,longitude:10.0067,source:'geoapify'};
+window.requests=[];
+card.setConfig({type:'custom:route-progress-card',title:'Meine Fahrt'});
+card.hass = {language:'de',callWS:async msg => {
+  window.requests.push(msg);
+  if(msg.action==='search') { await new Promise(resolve=>setTimeout(resolve,msg.query==='slow' ? 1200 : 50)); if(msg.query==='error') throw {code:'invalid_api_key'}; return {results:msg.query==='none'?[]:[result]}; }
+  if(msg.action==='select') {state.destination=state.zones.find(z=>z.id===msg.target_id)||result; state.can_start=!state.active;}
+  if(msg.action==='start') {state.active=true;state.status='en_route';state.can_start=false;state.share_url='https://example.com/t/test';}
+  if(msg.action==='finish') {state.active=false;state.status='manually_finished';state.can_start=true;}
+  return structuredClone(state);
+}};
+document.getElementById('width').onclick=()=>{document.querySelector('main').style.maxWidth=document.querySelector('main').style.maxWidth==='360px'?'720px':'360px';};
+</script></html>

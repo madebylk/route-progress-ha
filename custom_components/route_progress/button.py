@@ -40,7 +40,7 @@ class RouteProgressStartButton(RouteProgressEntity, ButtonEntity):
     @property
     def available(self) -> bool:
         """Enable the button whenever no trip is active."""
-        return self.manager.available and not self.manager.active
+        return self.manager.can_start
 
     async def async_press(self) -> None:
         """Create a share which waits for a stable navigation destination."""

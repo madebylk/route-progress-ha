@@ -18,6 +18,7 @@ from .const import (
     CONF_CLOUDFLARE_CLIENT_SECRET,
     PLATFORMS,
 )
+from .dashboard import async_setup_dashboard, async_unload_dashboard
 from .manager import RouteProgressManager
 
 
@@ -45,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await manager.async_load()
     entry.runtime_data = manager
+    await async_setup_dashboard(hass, manager)
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -56,6 +58,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Route Progress without finishing an active shared trip."""
     manager: RouteProgressManager = entry.runtime_data
     await manager.async_stop()
+    async_unload_dashboard(hass)
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

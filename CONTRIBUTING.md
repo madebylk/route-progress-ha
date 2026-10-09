@@ -21,8 +21,18 @@ Danke für dein Interesse an Route Progress for Home Assistant.
 5. Führe vor dem Pull Request die Tests aus:
 
    ```sh
+   python -m pip install -r requirements-test.txt
    python -m unittest discover -s tests -v
    ```
+
+   Die Tests verwenden simulierte Home-Assistant-Schnittstellen und HTTP-Antworten;
+   es werden keine echten API-Schlüssel oder Live-Suchanfragen benötigt.
+   Für den Browser-Smoke-Test der Dashboard-Karte: Playwright mit Chromium
+   bereitstellen, `node tests/frontend/serve-preview.cjs` starten und in einem
+   zweiten Terminal `node tests/frontend/card-smoke.cjs` ausführen. Der Test
+   verwendet die echte Karte mit einem simulierten `hass`-Objekt. Vor einer
+   Veröffentlichung zusätzlich Einrichtung und Nachkonfiguration in einer
+   echten Home-Assistant-Installation prüfen.
 
 6. Nenne im Pull Request die Motivation, die Auswirkungen und die durchgeführten
    Prüfungen.

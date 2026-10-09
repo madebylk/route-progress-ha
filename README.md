@@ -62,7 +62,8 @@ When the destination is reached, Route Progress presents the completed route, ar
 All screenshots above were captured from real, locally running Route Progress demo journeys using calculated road routes. They are not interface mock-ups.
 
 ## Features
-- Create a share link directly through a Home Assistant button entity
+- Create a share link through a Home Assistant button entity or a freely placed dashboard card
+- Choose destinations from entities, Geoapify search, Google Maps links or HA zones
 - Send position, destination, ETA, remaining distance, and optional route data
 - Detect destination changes and accept them deliberately
 - Finish a share manually at any time
@@ -78,7 +79,8 @@ All screenshots above were captured from real, locally running Route Progress de
 - URL of a reachable Route Progress service
 - API token issued for this Home Assistant instance
 - Cloudflare Access client ID and client secret when required
-- Suitable Home Assistant entities for the destination and vehicle position
+- A position entity with latitude/longitude (vehicle or smartphone)
+- Either destination entities, or manual destination selection; a Geoapify API key enables address search in manual mode
 
 ## Installation with HACS
 
@@ -97,13 +99,16 @@ With server access and credentials already available, copy custom_components/rou
 
 Enter the service URL and API token supplied by your Route Progress server operator, and an update interval between 10 and 300 seconds. Enable **Use Cloudflare Access** and enter the supplied client ID and client secret when required. These credentials must come from the existing server; installing the integration does not create them.
 
-Then select data sources through Home Assistant entity selectors.
+Choose a **Destination source** in the first setup step (also available under **Reconfigure**):
 
-Required entities:
+| Source | Second setup step | Use case |
+| --- | --- | --- |
+| Automatically from entities | Destination name and destination coordinates entities | Vehicles/integrations that expose their navigation target |
+| Manual: search, Maps link or HA zone | Optional Geoapify API key | Any vehicle, including journeys tracked by a smartphone |
 
-- Destination name
-- Destination position with latitude and longitude attributes
-- Vehicle position with latitude and longitude attributes
+Both modes require a position entity with `latitude` and `longitude` attributes. Existing installations keep entity mode automatically. Finish an active share before switching modes. Switching to entity mode removes the stored Geoapify key from the integration configuration.
+
+The Geoapify field appears **only in manual mode**. Leave it empty if you only use HA zones or supported Maps links with explicit destination coordinates. Text searches and links containing only an address need a key.
 
 Optional entities:
 
@@ -115,6 +120,43 @@ Optional entities:
 - Planned charging time
 - Charging status
 - Estimated battery level at arrival
+
+## Best practices: manual destination selection
+
+### 1. Configure the source once
+
+Select **Manual: search, Maps link or HA zone**, choose a smartphone or vehicle GPS entity, and enter your own [Geoapify API key](https://myprojects.geoapify.com/) in the second step if you want address search. Home Assistant calls Geoapify directly. Neither the key nor your search queries are sent to the Route Progress server. The key is stored with the integration credentials, not in the card YAML or entity attributes. Treat Home Assistant backups as sensitive.
+
+Geoapify has a free tier; consult its [current pricing](https://www.geoapify.com/pricing/) rather than assuming a permanent quota. One destination search can issue several autocomplete requests. Requests are delayed while you type and limited across users. Quota/authentication failures appear in the card without revealing credentials.
+
+### 2. Add the card wherever you need it
+
+Open a dashboard, choose **Edit dashboard → Add card → Route Progress**, and place it in any view. The integration automatically registers the card; no separate HACS frontend download is required. Refresh the browser/Companion App after installing or updating if the card is not yet listed.
+
+For YAML dashboards or the manual card editor:
+
+```yaml
+type: custom:route-progress-card
+title: My journey
+```
+
+The optional title can be changed in the visual card editor. Multiple cards control the **same single integration and shared trip**, not separate journeys. Normal Home Assistant entity permissions apply: users need control of the integration's start button and read access to its configured position entity. Zones are filtered by read access.
+
+### 3. Choose and check the destination before starting
+
+- **Search:** enter at least three characters of a place or address and select a result. Add a city or street when a place name is ambiguous. Results come from Geoapify; its OpenStreetMap-based data can differ from Google Maps listings.
+- **Paste a Google Maps link:** use **Share → Copy link** on a single place in Google Maps. Supported `maps.app.goo.gl` and `goo.gl/maps` short links are expanded inside Home Assistant. Explicit destination coordinates are used directly; address-only links are searched with Geoapify. A Maps viewport is never treated as the target. Multi-stop/directions links without a single explicit destination, opaque place-ID-only links and unsupported formats are rejected with guidance to paste a place link or search the address.
+- **HA zone:** select an existing zone to use its name and coordinates without a Geoapify request.
+
+Check the name, address and map preview, then choose **Use destination → Share trip**. Selecting/searching alone never creates a public link. The OpenStreetMap preview sends the selected map location to OpenStreetMap; Geoapify attribution remains visible with its results. Use **Copy link** or the device's **Share link** action to send the share yourself.
+
+### 4. Keep the journey predictable
+
+The chosen destination is saved in Home Assistant and survives restarts. A zone is copied when selected: later zone edits do not silently move an active journey's target. During a share, selecting another target and pressing **Change trip destination** explicitly accepts that change. If the server is unavailable, the chosen target stays saved; retry or use **Accept new destination** after reconnection if confirmation remains pending.
+
+The normal server destination-confirmation period still applies when a new share starts. Missing vehicle navigation entities do not pause a manually selected target. Position timestamps still reflect real GPS observations; reducing the integration interval cannot make the phone report new GPS coordinates. Enable the appropriate background location permissions in the Companion App and monitor position freshness.
+
+With an updated Route Progress server, absent ETA/distance values are filled from road-routing estimates and marked as estimates. The estimated time is scaled as the remaining route shortens and does not include live traffic or charging plans. Supplied vehicle metrics take precedence. If routing fails or the server is older, these values may remain unavailable. Leave destination-dependent vehicle metrics (ETA, remaining distance, traffic, charging plan, arrival battery) unconfigured when they refer to a different navigation target.
 
 ## Usage
 
@@ -139,9 +181,9 @@ Trip ID, status, and share link are stored locally in Home Assistant so an activ
 ## Privacy and security
 
 - No share is created until the start button is pressed.
-- Only values from explicitly configured entities are transmitted.
+- Only configured entity values and the explicitly selected destination are sent to the share server. Manual search text goes directly from Home Assistant to Geoapify; pasted Maps short links are resolved with Google.
 - The public link is read-only and expires after 24 hours.
-- API and Cloudflare Access credentials stay in the Home Assistant config entry.
+- API, Geoapify and Cloudflare Access credentials stay in the Home Assistant config entry.
 - Debug logs can contain state, route, and API data and should be enabled only temporarily.
 - Share links and known credential fields are redacted from integration logs.
 
