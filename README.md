@@ -129,18 +129,52 @@ Select **Manual: search, Maps link or HA zone**, choose a smartphone or vehicle 
 
 Geoapify has a free tier; consult its [current pricing](https://www.geoapify.com/pricing/) rather than assuming a permanent quota. One destination search can issue several autocomplete requests. Requests are delayed while you type and limited across users. Quota/authentication failures appear in the card without revealing credentials.
 
-### 2. Add the card wherever you need it
+### 2. Add the dashboard card
 
-Open a dashboard, choose **Edit dashboard → Add card → Route Progress**, and place it in any view. The integration automatically registers the card; no separate HACS frontend download is required. Refresh the browser/Companion App after installing or updating if the card is not yet listed.
+The card is **bundled with the Route Progress integration**, starting with v0.14.0. HACS installs and updates both together. Do not add a second HACS dashboard repository, copy JavaScript into `/config/www`, or manually register a dashboard resource: the integration loads the card automatically.
 
-For YAML dashboards or the manual card editor:
+**Prerequisites:** finish setting up the integration, select **Manual: search, Maps link or HA zone**, and configure a position entity. Existing installations remain in entity mode after an update; switch modes under **Settings → Devices & services → Route Progress → Reconfigure** before using this card. Finish an active share before changing the source. The card is for choosing manual destinations; entity mode continues to use the existing integration entities and buttons.
+
+#### Add through the dashboard editor
+
+1. After installing or updating the integration in HACS, restart Home Assistant to load the Python integration changes.
+2. Reload the browser or Companion App frontend to load the bundled card.
+3. Open the dashboard and view where the card should appear, then enter **Edit dashboard**.
+4. Choose **Add card**, search for **Route Progress**, and select it.
+5. Optionally change its title in the visual editor, then save the card and dashboard.
+
+You can place the card in different dashboard views or include it in a stack. No entity IDs or API keys belong in the card configuration. Creating a card requires permission to edit the dashboard.
+
+#### YAML configuration
+
+Use this in the manual card editor, or under a view's `cards` list in a YAML dashboard:
 
 ```yaml
 type: custom:route-progress-card
 title: My journey
 ```
 
-The optional title can be changed in the visual card editor. Multiple cards control the **same single integration and shared trip**, not separate journeys. Normal Home Assistant entity permissions apply: users need control of the integration's start button and read access to its configured position entity. Zones are filtered by read access.
+| Option | Required | Default | Description |
+| --- | --- | --- | --- |
+| `type` | Yes | — | Must be `custom:route-progress-card`. |
+| `title` | No | `Route Progress` | Heading displayed at the top of the card. |
+
+These are the card's configuration options. The integration owns the server connection, Geoapify key, position source and update interval. The card follows the Home Assistant language, with German and English supported.
+
+#### Controls and shared state
+
+| Control | What it does |
+| --- | --- |
+| Search field / Search | Find a place or address, or resolve a supported Google Maps link. |
+| HA zones | Preview the selected zone as a destination. |
+| Use destination | Save the previewed target; does not start a public share. |
+| Share trip | Create a share using the saved destination; enabled when a destination is selected, the server is available and no share is active. |
+| Change trip destination | Explicitly adopt the previewed target during an active share. |
+| Accept new destination | Retry destination confirmation if the server still reports a pending target change. |
+| Finish trip | Stop updates to the current share. |
+| Copy link / Share link | Copy the link or open the device's share dialog where supported. |
+
+Multiple cards control the **same single integration and shared trip**, not separate journeys. Normal Home Assistant entity permissions apply: users need control of the integration's start button and read access to its configured position entity. Zones are filtered by read access. Removing a card does not end a share or delete the integration; use **Finish trip** to stop sharing.
 
 ### 3. Choose and check the destination before starting
 
@@ -190,6 +224,23 @@ Trip ID, status, and share link are stored locally in Home Assistant so an activ
 Do not report security vulnerabilities in a public issue. See [SECURITY.md](SECURITY.md).
 
 ## Troubleshooting
+
+### Dashboard card
+
+| Symptom | Check |
+| --- | --- |
+| Route Progress is missing from the card picker, or `Custom element doesn't exist: route-progress-card` | Confirm integration v0.14.0 or newer is installed and the integration loaded successfully. Restart HA after the integration update, then reload the browser/Companion App. If needed, try a hard refresh. Do not add duplicate manual resources. |
+| Manual destinations are disabled | Reconfigure the integration and select manual mode; updating an existing installation deliberately preserves entity mode. |
+| No permission to control this trip | Check the user's access to the configured position entity and the Route Progress start button. Dashboard visibility alone does not grant these permissions. |
+| Address search asks for an API key | Enter a Geoapify key in the integration's manual-mode setup step, not in the card YAML. Zones and coordinate-bearing Maps links can work without it. |
+| API key rejected or quota reached | Check the Geoapify key/account and current quota, then retry. Avoid repeatedly submitting the same failing request. |
+| Maps link cannot be resolved | Copy the link for a single place. For ambiguous directions, viewport-only or unsupported links, search for the address instead. |
+| Share trip is disabled | Select and confirm a destination, check the server connection, and finish any active share first. |
+| Map preview is empty | Check whether the browser can access OpenStreetMap. The displayed name and coordinates remain available for checking the target. |
+| Share link button is missing | The browser does not expose native sharing; use Copy link. If clipboard access fails, the card selects the link for manual copying. |
+| Another card shows the same journey | Expected: all cards connect to the same single integration. |
+
+### Diagnostic logging
 
 Enable debug logging temporarily:
 
