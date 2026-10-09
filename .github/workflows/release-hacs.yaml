@@ -1,17 +1,9 @@
 name: Publish HACS release
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      version:
-        description: "SemVer from manifest.json, without the leading v"
-        required: true
-        type: string
-      prerelease:
-        description: "Publish as a prerelease"
-        required: true
-        default: false
-        type: boolean
 
 permissions: {}
 
@@ -20,113 +12,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  unit:
-    name: Unit tests
-    runs-on: ubuntu-latest
+  validate:
+    name: Validate integration
+    uses: ./.github/workflows/validate-hacs.yaml
     permissions:
       contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.13"
-      - name: Install test dependencies
-        run: python -m pip install -r requirements-test.txt
-      - name: Run unit tests
-        run: python -m unittest discover -s tests -v
 
-  hacs:
-    name: HACS validation
+  plan:
+    name: Plan release from manifest
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      publish: ${{ steps.plan.outputs.publish }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Validate HACS repository
-        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          category: integration
-
-  hassfest:
-    name: Hassfest validation
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Validate Home Assistant integration
-        uses: home-assistant/actions/hassfest@58bff37c8947f690ace498be413a9b78d6f30f93 # master
+          fetch-depth: 0
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release.py plan --version-file custom_components/route_progress/manifest.json
 
   release:
-    name: Create GitHub release
-    needs:
-      - unit
-      - hacs
-      - hassfest
+    name: Create versioned HACS release
+    needs: [plan, validate]
+    if: needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-
-      - name: Validate release version
-        env:
-          RELEASE_VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-
-          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Version must be a valid SemVer without a leading v." >&2
-            exit 1
-          fi
-
-          test -s "docs/releases/$RELEASE_VERSION.md"
-
-          manifest_version="$(jq -r '.version' custom_components/route_progress/manifest.json)"
-          if [[ "$RELEASE_VERSION" != "$manifest_version" ]]; then
-            echo "Requested version $RELEASE_VERSION does not match manifest version $manifest_version." >&2
-            exit 1
-          fi
-
-          if git ls-remote --exit-code --tags origin "refs/tags/v$RELEASE_VERSION" >/dev/null 2>&1; then
-            echo "Tag v$RELEASE_VERSION already exists." >&2
-            exit 1
-          fi
-
-      - name: Publish stable release
-        if: ${{ inputs.prerelease == false }}
+      - name: Publish and verify GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ inputs.version }}
-        run: >-
-          gh release create "v$RELEASE_VERSION"
-          --target "$GITHUB_SHA"
-          --title "Route Progress v$RELEASE_VERSION"
-          --notes-file "docs/releases/$RELEASE_VERSION.md"
-          --latest
-
-      - name: Publish prerelease
-        if: ${{ inputs.prerelease }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ inputs.version }}
-        run: >-
-          gh release create "v$RELEASE_VERSION"
-          --target "$GITHUB_SHA"
-          --title "Route Progress v$RELEASE_VERSION"
-          --notes-file "docs/releases/$RELEASE_VERSION.md"
-          --prerelease
-
-      - name: Write release summary
-        env:
-          RELEASE_VERSION: ${{ inputs.version }}
-        run: |
-          echo "## Route Progress v$RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"
-          echo "The GitHub release is ready for HACS." >> "$GITHUB_STEP_SUMMARY"
+        run: python3 scripts/release.py publish --version-file custom_components/route_progress/manifest.json

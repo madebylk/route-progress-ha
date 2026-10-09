@@ -289,3 +289,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for pull request guidelines.
 ## License
 
 This project is available under the [MIT License](LICENSE).
+
+## Automatic releases (maintainers)
+
+Maintainers publish by committing a new `version` in `custom_components/route_progress/manifest.json` together with `docs/releases/<version>.md` and pushing to `main`. The **Publish HACS release** workflow runs unit tests, HACS validation and Hassfest, then creates the matching tag **and full GitHub release** with those release notes. HACS uses GitHub releases to discover updates; a tag alone is insufficient. See the [HACS publishing requirements](https://hacs.dev/docs/publish/start/).
+
+An already published version is skipped, never overwritten. A SemVer prerelease suffix produces a prerelease, not a stable update. Feature-branch pushes and pull requests only validate. **Run workflow** on `main` retries publication using the manifest version; no manual version input is needed. Failed attempts that reserved a tag can only be retried at that same commit. Use a new version for code corrections. This automation publishes updates; users still install the update in HACS and restart Home Assistant. Discovery depends on HACS refreshing GitHub metadata and is not necessarily instantaneous.
