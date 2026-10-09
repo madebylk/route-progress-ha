@@ -140,11 +140,7 @@ class RouteProgressManager:
         if self.manual_mode and isinstance(data.get("manual_destination"), dict):
             try:
                 target = data["manual_destination"]
-                self.manual_destination = point_result(
-                    target.get("name", ""),
-                    target.get("latitude"),
-                    target.get("longitude"),
-                )
+                self.manual_destination = _manual_target(target)
                 self.manual_destination_updated_at = dt_util.parse_datetime(
                     data.get("manual_destination_updated_at") or ""
                 )
@@ -259,9 +255,7 @@ class RouteProgressManager:
         if not self.manual_mode:
             raise HomeAssistantError("Manual destinations are disabled.")
         async with self._lock:
-            self.manual_destination = point_result(
-                destination["name"], destination["latitude"], destination["longitude"]
-            )
+            self.manual_destination = _manual_target(destination)
             self.manual_destination_updated_at = dt_util.utcnow()
             await self._async_save_and_notify()
             if self.active:
@@ -656,3 +650,14 @@ def _as_number(value: Any) -> float | None:
 def _optional_string(value: Any) -> str | None:
     """Normalize a stored optional string."""
     return str(value) if value not in (None, "") else None
+
+
+def _manual_target(value: dict[str, Any]) -> dict[str, Any]:
+    """Retain provider attribution together with the validated selected target."""
+    target = point_result(
+        value.get("name", ""), value.get("latitude"), value.get("longitude")
+    )
+    if value.get("source") in {"geoapify", "google_maps", "zone"}:
+        target["source"] = value["source"]
+        target["address"] = str(value.get("address", ""))[:500]
+    return target

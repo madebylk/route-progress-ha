@@ -91,7 +91,8 @@ class RouteProgressCard extends HTMLElement {
       clearTimeout(this.timer);
       this.sequence++;
       this.message('');
-      this.el('attribution').hidden = true;
+      this.geoapifyResults = false;
+      this.updateAttribution();
       this.el('results').replaceChildren();
       this.el('preview').hidden = true;
       this.preview = null;
@@ -151,6 +152,7 @@ class RouteProgressCard extends HTMLElement {
 
   renderState(state) {
     this.state = state;
+    this.updateAttribution();
     this.el('key-hint').hidden = state.search_enabled;
     this.el('selected').textContent = state.destination?.name || this.t('Noch kein Ziel gewählt', 'No destination selected');
     const labels = {
@@ -176,6 +178,10 @@ class RouteProgressCard extends HTMLElement {
     }));
   }
 
+  updateAttribution() {
+    this.el('attribution').hidden = !(this.geoapifyResults || this.state?.destination?.source === 'geoapify');
+  }
+
   async search() {
     const sequence = ++this.sequence;
     if (this.el('query').value.trim().length < 3) { this.error({code:'invalid_query'}); return; }
@@ -194,7 +200,8 @@ class RouteProgressCard extends HTMLElement {
         button.onclick = () => this.showPreview(result);
         return button;
       }));
-      this.el('attribution').hidden = !results.some(r => r.source === 'geoapify');
+      this.geoapifyResults = results.some(r => r.source === 'geoapify');
+      this.updateAttribution();
       this.message(results.length ? this.t('Bitte einen Treffer auswählen.', 'Please select a result.') : this.t('Keine Treffer. Versuche Ort und Straße genauer anzugeben.', 'No results. Try a more specific place or address.'));
     } catch (e) { if (sequence === this.sequence) this.error(e); }
   }

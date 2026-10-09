@@ -39,6 +39,16 @@ class ManualManagerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["destination"], TARGET)
         self.assertEqual(payload["navigation_presence"], "present")
 
+    async def test_provider_attribution_survives_restart(self):
+        manager, _ = make_manager()
+        target = {**TARGET, "source": "geoapify", "address": "Home, Hamburg"}
+        await manager.async_select_destination(target)
+        restored, _ = make_manager()
+        restored._store.data = manager._store.data
+        await restored.async_load()
+        self.assertEqual(restored.manual_destination, target)
+        self.assertEqual(restored._snapshot().create_payload()["destination"], TARGET)
+
     async def test_heartbeat_does_not_fabricate_position_or_source_freshness(self):
         manager, states = make_manager()
         await manager.async_select_destination(TARGET)
