@@ -7,7 +7,7 @@
         "description": "Verbindung und Standortquelle wählen. Im nächsten Schritt werden die Einstellungen für die gewählte Zielquelle angezeigt.",
         "data": {
           "base_url": "Route-Progress-URL",
-          "api_token": "Home-Assistant-API-Token",
+          "api_token": "Route-Progress-API-Token",
           "cloudflare_access_enabled": "Cloudflare Access verwenden",
           "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
@@ -24,6 +24,7 @@
           "destination_source": "Zielquelle"
         },
         "data_description": {
+          "api_token": "API-Token vom Betreiber deines Route-Progress-Servers für diese Integration.",
           "vehicle_position_entity": "Entität mit latitude- und longitude-Attributen.",
           "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
           "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
@@ -35,7 +36,7 @@
         "description": "Verbindung und Standortquelle wählen. Im nächsten Schritt werden die Einstellungen für die gewählte Zielquelle angezeigt.",
         "data": {
           "base_url": "Route-Progress-URL",
-          "api_token": "Home-Assistant-API-Token",
+          "api_token": "Route-Progress-API-Token",
           "cloudflare_access_enabled": "Cloudflare Access verwenden",
           "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
@@ -52,6 +53,7 @@
           "destination_source": "Zielquelle"
         },
         "data_description": {
+          "api_token": "API-Token vom Betreiber deines Route-Progress-Servers für diese Integration.",
           "vehicle_position_entity": "Entität mit latitude- und longitude-Attributen.",
           "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
           "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
@@ -74,7 +76,7 @@
     "error": {
       "cannot_connect": "Route Progress ist nicht erreichbar",
       "cloudflare_credentials_required": "Gib die Cloudflare Access Client-ID und das Client-Secret ein",
-      "invalid_auth": "Das Home-Assistant-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
+      "invalid_auth": "Das Route-Progress-API-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
       "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
       "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus",
       "active_trip": "Bitte die aktive Freigabe beenden, bevor die Zielquelle gewechselt wird.",
@@ -94,7 +96,7 @@
         "description": "Verbindung und Standortquelle wählen. Im nächsten Schritt werden die Einstellungen für die gewählte Zielquelle angezeigt.",
         "data": {
           "base_url": "Route-Progress-URL",
-          "api_token": "Home-Assistant-API-Token",
+          "api_token": "Route-Progress-API-Token",
           "cloudflare_access_enabled": "Cloudflare Access verwenden",
           "cloudflare_client_id": "Cloudflare Access Client-ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client-Secret (optional)",
@@ -111,6 +113,7 @@
           "destination_source": "Zielquelle"
         },
         "data_description": {
+          "api_token": "API-Token vom Betreiber deines Route-Progress-Servers für diese Integration.",
           "vehicle_position_entity": "Entität mit latitude- und longitude-Attributen.",
           "cloudflare_access_enabled": "Aktiviere dies, wenn /api/v1 durch einen Cloudflare Access Service-Token geschützt ist.",
           "cloudflare_client_id": "Erforderlich, wenn Cloudflare Access aktiviert ist.",
@@ -133,7 +136,7 @@
     "error": {
       "cannot_connect": "Route Progress ist nicht erreichbar",
       "cloudflare_credentials_required": "Gib die Cloudflare Access Client-ID und das Client-Secret ein",
-      "invalid_auth": "Das Home-Assistant-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
+      "invalid_auth": "Das Route-Progress-API-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
       "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
       "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus",
       "active_trip": "Bitte die aktive Freigabe beenden, bevor die Zielquelle gewechselt wird.",

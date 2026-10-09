@@ -7,7 +7,7 @@
         "description": "Choose the connection and position source. The next step shows settings for your selected destination source.",
         "data": {
           "base_url": "Route Progress URL",
-          "api_token": "Home Assistant API token",
+          "api_token": "Route Progress API token",
           "cloudflare_access_enabled": "Use Cloudflare Access",
           "cloudflare_client_id": "Cloudflare Access Client ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client Secret (optional)",
@@ -24,6 +24,7 @@
           "destination_source": "Destination source"
         },
         "data_description": {
+          "api_token": "API token supplied by your Route Progress server operator for this integration.",
           "vehicle_position_entity": "An entity with latitude and longitude attributes.",
           "cloudflare_access_enabled": "Enable this when /api/v1 is protected by a Cloudflare Access service token.",
           "cloudflare_client_id": "Required when Cloudflare Access is enabled.",
@@ -35,7 +36,7 @@
         "description": "Choose the connection and position source. The next step shows settings for your selected destination source.",
         "data": {
           "base_url": "Route Progress URL",
-          "api_token": "Home Assistant API token",
+          "api_token": "Route Progress API token",
           "cloudflare_access_enabled": "Use Cloudflare Access",
           "cloudflare_client_id": "Cloudflare Access Client ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client Secret (optional)",
@@ -52,6 +53,7 @@
           "destination_source": "Destination source"
         },
         "data_description": {
+          "api_token": "API token supplied by your Route Progress server operator for this integration.",
           "vehicle_position_entity": "An entity with latitude and longitude attributes.",
           "cloudflare_access_enabled": "Enable this when /api/v1 is protected by a Cloudflare Access service token.",
           "cloudflare_client_id": "Required when Cloudflare Access is enabled.",
@@ -74,7 +76,7 @@
     "error": {
       "cannot_connect": "Could not connect to Route Progress",
       "cloudflare_credentials_required": "Enter the Cloudflare Access Client ID and Client Secret",
-      "invalid_auth": "The Home Assistant token or Cloudflare Access credentials were rejected",
+      "invalid_auth": "The Route Progress API token or Cloudflare Access credentials were rejected",
       "invalid_url": "Enter a valid HTTP or HTTPS URL",
       "required_entity": "Select an entity for this required field",
       "active_trip": "Finish the active share before switching destination source.",
@@ -94,7 +96,7 @@
         "description": "Choose the connection and position source. The next step shows settings for your selected destination source.",
         "data": {
           "base_url": "Route Progress URL",
-          "api_token": "Home Assistant API token",
+          "api_token": "Route Progress API token",
           "cloudflare_access_enabled": "Use Cloudflare Access",
           "cloudflare_client_id": "Cloudflare Access Client ID (optional)",
           "cloudflare_client_secret": "Cloudflare Access Client Secret (optional)",
@@ -111,6 +113,7 @@
           "destination_source": "Destination source"
         },
         "data_description": {
+          "api_token": "API token supplied by your Route Progress server operator for this integration.",
           "vehicle_position_entity": "An entity with latitude and longitude attributes.",
           "cloudflare_access_enabled": "Enable this when /api/v1 is protected by a Cloudflare Access service token.",
           "cloudflare_client_id": "Required when Cloudflare Access is enabled.",
@@ -133,7 +136,7 @@
     "error": {
       "cannot_connect": "Could not connect to Route Progress",
       "cloudflare_credentials_required": "Enter the Cloudflare Access Client ID and Client Secret",
-      "invalid_auth": "The Home Assistant token or Cloudflare Access credentials were rejected",
+      "invalid_auth": "The Route Progress API token or Cloudflare Access credentials were rejected",
       "invalid_url": "Enter a valid HTTP or HTTPS URL",
       "required_entity": "Select an entity for this required field",
       "active_trip": "Finish the active share before switching destination source.",
