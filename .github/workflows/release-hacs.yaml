@@ -32,6 +32,8 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-test.txt
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
@@ -85,6 +87,8 @@ jobs:
             exit 1
           fi
 
+          test -s "docs/releases/$RELEASE_VERSION.md"
+
           manifest_version="$(jq -r '.version' custom_components/route_progress/manifest.json)"
           if [[ "$RELEASE_VERSION" != "$manifest_version" ]]; then
             echo "Requested version $RELEASE_VERSION does not match manifest version $manifest_version." >&2
@@ -105,7 +109,7 @@ jobs:
           gh release create "v$RELEASE_VERSION"
           --target "$GITHUB_SHA"
           --title "Route Progress v$RELEASE_VERSION"
-          --generate-notes
+          --notes-file "docs/releases/$RELEASE_VERSION.md"
           --latest
 
       - name: Publish prerelease
@@ -117,7 +121,7 @@ jobs:
           gh release create "v$RELEASE_VERSION"
           --target "$GITHUB_SHA"
           --title "Route Progress v$RELEASE_VERSION"
-          --generate-notes
+          --notes-file "docs/releases/$RELEASE_VERSION.md"
           --prerelease
 
       - name: Write release summary
