@@ -6,6 +6,8 @@ import asyncio
 import json
 import math
 import re
+import time
+from datetime import UTC, datetime
 from urllib.parse import parse_qs, unquote, urljoin, urlsplit
 
 import aiohttp
@@ -120,6 +122,41 @@ class DestinationLookup:
         self.api_key = api_key
         self._lock = asyncio.Lock()
         self._last_request = 0.0
+        self.connected: bool | None = None
+        self.last_checked: datetime | None = None
+        self.last_successful_connection: datetime | None = None
+        self.last_error: str | None = None
+        self._checked_monotonic = 0.0
+        self._check_lock = asyncio.Lock()
+        self._listeners = set()
+
+    def add_listener(self, listener):
+        self._listeners.add(listener)
+        return lambda: self._listeners.discard(listener)
+
+    def _record_status(self, error=None):
+        self.connected = error is None
+        self.last_checked = datetime.now(UTC)
+        self._checked_monotonic = time.monotonic()
+        self.last_error = error
+        if error is None:
+            self.last_successful_connection = self.last_checked
+        for listener in tuple(self._listeners):
+            listener()
+
+    async def check_api(self):
+        """Reuse recent provider responses; serialize concurrent setup checks."""
+        if not self.api_key:
+            return
+        async with self._check_lock:
+            ttl = 900 if self.connected else 60
+            if self.last_checked and time.monotonic() - self._checked_monotonic < ttl:
+                if self.last_error:
+                    raise DestinationError(self.last_error)
+                return
+            # A fixed public place checks the actual autocomplete permission.
+            # No private address is needed and no periodic probe is scheduled.
+            await self.search("Berlin")
 
     async def search(self, text: str, language: str = "en") -> list[dict]:
         text = text.strip()
@@ -140,6 +177,13 @@ class DestinationLookup:
                 text = target
             if not self.api_key:
                 raise DestinationError("api_key_required")
+            if (
+                self.last_error in {"invalid_api_key", "rate_limited"}
+                and time.monotonic() - self._checked_monotonic < 60
+            ):
+                # Do not spend requests on a known invalid key or exhausted quota.
+                # Coordinate links above still work during this cooldown.
+                raise DestinationError(self.last_error)
             try:
                 async with self.session.get(
                     "https://api.geoapify.com/v1/geocode/autocomplete",
@@ -164,13 +208,19 @@ class DestinationLookup:
                         if len(body) > 256_000:
                             raise DestinationError("lookup_failed")
                     payload = json.loads(body)
+            except DestinationError as err:
+                self._record_status(str(err))
+                raise
             except (aiohttp.ClientError, TimeoutError, ValueError):
+                self._record_status("lookup_failed")
                 raise DestinationError("lookup_failed") from None
         results = []
         if not isinstance(payload, dict) or not isinstance(
             payload.get("features"), list
         ):
+            self._record_status("lookup_failed")
             raise DestinationError("lookup_failed")
+        self._record_status()
         for feature in payload.get("features", [])[:5]:
             if not isinstance(feature, dict) or not isinstance(
                 feature.get("properties"), dict

@@ -30,6 +30,41 @@ async def async_setup_entry(
             RouteProgressCloudConnectionBinarySensor(manager),
         ]
     )
+    if manager.geoapify is not None:
+        async_add_entities([RouteProgressGeoapifyConnectionBinarySensor(manager)])
+
+
+class RouteProgressGeoapifyConnectionBinarySensor(
+    RouteProgressEntity, BinarySensorEntity
+):
+    """Last observed Geoapify connectivity, without background API polling."""
+
+    _attr_translation_key = "geoapify_connection"
+    _attr_should_poll = False
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, manager):
+        super().__init__(manager, "geoapify_connection")
+
+    @property
+    def available(self):
+        return self.manager.geoapify is not None
+
+    @property
+    def is_on(self):
+        return self.manager.geoapify.connected if self.manager.geoapify else None
+
+    @property
+    def extra_state_attributes(self):
+        lookup = self.manager.geoapify
+        if lookup is None:
+            return {}
+        return {
+            "last_checked": lookup.last_checked,
+            "last_successful_connection": lookup.last_successful_connection,
+            "last_error": lookup.last_error,
+        }
 
 
 class RouteProgressActiveBinarySensor(RouteProgressEntity, BinarySensorEntity):
@@ -48,9 +83,7 @@ class RouteProgressActiveBinarySensor(RouteProgressEntity, BinarySensorEntity):
         return self.manager.active
 
 
-class RouteProgressCloudConnectionBinarySensor(
-    RouteProgressEntity, BinarySensorEntity
-):
+class RouteProgressCloudConnectionBinarySensor(RouteProgressEntity, BinarySensorEntity):
     """Show whether the Route Progress API is reachable."""
 
     _attr_translation_key = "cloud_connection"

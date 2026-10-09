@@ -65,6 +65,9 @@
           "geoapify_api_key": "Geoapify API key (optional)",
           "destination_entity": "Destination name entity",
           "destination_position_entity": "Destination coordinates entity"
+        },
+        "data_description": {
+          "geoapify_api_key": "Validated when saved. Successful checks are reused for 15 minutes. Without a key, HA zones and supported Maps links remain available."
         }
       }
     },
@@ -74,7 +77,10 @@
       "invalid_auth": "The Home Assistant token or Cloudflare Access credentials were rejected",
       "invalid_url": "Enter a valid HTTP or HTTPS URL",
       "required_entity": "Select an entity for this required field",
-      "active_trip": "Finish the active share before switching destination source."
+      "active_trip": "Finish the active share before switching destination source.",
+      "geoapify_invalid_key": "Geoapify rejected the API key. Check the key and its permissions.",
+      "geoapify_rate_limited": "Geoapify quota or rate limit reached. Wait at least one minute before retrying.",
+      "geoapify_unavailable": "Could not verify Geoapify. Check connectivity and retry in one minute."
     },
     "abort": {
       "single_instance_allowed": "Route Progress is already configured",
@@ -118,6 +124,9 @@
           "geoapify_api_key": "Geoapify API key (optional)",
           "destination_entity": "Destination name entity",
           "destination_position_entity": "Destination coordinates entity"
+        },
+        "data_description": {
+          "geoapify_api_key": "Validated when saved. Successful checks are reused for 15 minutes. Without a key, HA zones and supported Maps links remain available."
         }
       }
     },
@@ -127,7 +136,10 @@
       "invalid_auth": "The Home Assistant token or Cloudflare Access credentials were rejected",
       "invalid_url": "Enter a valid HTTP or HTTPS URL",
       "required_entity": "Select an entity for this required field",
-      "active_trip": "Finish the active share before switching destination source."
+      "active_trip": "Finish the active share before switching destination source.",
+      "geoapify_invalid_key": "Geoapify rejected the API key. Check the key and its permissions.",
+      "geoapify_rate_limited": "Geoapify quota or rate limit reached. Wait at least one minute before retrying.",
+      "geoapify_unavailable": "Could not verify Geoapify. Check connectivity and retry in one minute."
     }
   },
   "exceptions": {
@@ -162,6 +174,9 @@
       },
       "cloud_connection": {
         "name": "Cloud connection"
+      },
+      "geoapify_connection": {
+        "name": "Geoapify connection"
       }
     },
     "button": {

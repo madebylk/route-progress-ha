@@ -65,6 +65,9 @@
           "geoapify_api_key": "Geoapify API-Schlüssel (optional)",
           "destination_entity": "Entität für den Zielnamen",
           "destination_position_entity": "Entität für die Zielkoordinaten"
+        },
+        "data_description": {
+          "geoapify_api_key": "Wird beim Speichern geprüft. Erfolgreiche Prüfungen werden 15 Minuten wiederverwendet. Ohne Schlüssel bleiben HA-Zonen und geeignete Maps-Links nutzbar."
         }
       }
     },
@@ -74,7 +77,10 @@
       "invalid_auth": "Das Home-Assistant-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
       "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
       "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus",
-      "active_trip": "Bitte die aktive Freigabe beenden, bevor die Zielquelle gewechselt wird."
+      "active_trip": "Bitte die aktive Freigabe beenden, bevor die Zielquelle gewechselt wird.",
+      "geoapify_invalid_key": "Geoapify hat den API-Schlüssel abgelehnt. Bitte Schlüssel und Berechtigungen prüfen.",
+      "geoapify_rate_limited": "Geoapify-Kontingent oder Anfragelimit erreicht. Bitte frühestens in einer Minute erneut versuchen.",
+      "geoapify_unavailable": "Geoapify konnte nicht geprüft werden. Bitte Verbindung prüfen und in einer Minute erneut versuchen."
     },
     "abort": {
       "single_instance_allowed": "Route Progress ist bereits eingerichtet",
@@ -118,6 +124,9 @@
           "geoapify_api_key": "Geoapify API-Schlüssel (optional)",
           "destination_entity": "Entität für den Zielnamen",
           "destination_position_entity": "Entität für die Zielkoordinaten"
+        },
+        "data_description": {
+          "geoapify_api_key": "Wird beim Speichern geprüft. Erfolgreiche Prüfungen werden 15 Minuten wiederverwendet. Ohne Schlüssel bleiben HA-Zonen und geeignete Maps-Links nutzbar."
         }
       }
     },
@@ -127,7 +136,10 @@
       "invalid_auth": "Das Home-Assistant-Token oder die Cloudflare-Access-Zugangsdaten wurden abgelehnt",
       "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein",
       "required_entity": "Wähle für dieses Pflichtfeld eine Entity aus",
-      "active_trip": "Bitte die aktive Freigabe beenden, bevor die Zielquelle gewechselt wird."
+      "active_trip": "Bitte die aktive Freigabe beenden, bevor die Zielquelle gewechselt wird.",
+      "geoapify_invalid_key": "Geoapify hat den API-Schlüssel abgelehnt. Bitte Schlüssel und Berechtigungen prüfen.",
+      "geoapify_rate_limited": "Geoapify-Kontingent oder Anfragelimit erreicht. Bitte frühestens in einer Minute erneut versuchen.",
+      "geoapify_unavailable": "Geoapify konnte nicht geprüft werden. Bitte Verbindung prüfen und in einer Minute erneut versuchen."
     }
   },
   "exceptions": {
@@ -162,6 +174,9 @@
       },
       "cloud_connection": {
         "name": "Cloud-Verbindung"
+      },
+      "geoapify_connection": {
+        "name": "Geoapify-Verbindung"
       }
     },
     "button": {

@@ -129,6 +129,14 @@ Select **Manual: search, Maps link or HA zone**, choose a smartphone or vehicle 
 
 Geoapify has a free tier; consult its [current pricing](https://www.geoapify.com/pricing/) rather than assuming a permanent quota. One destination search can issue several autocomplete requests. Requests are delayed while you type and limited across users. Quota/authentication failures appear in the card without revealing credentials.
 
+### Geoapify validation and connection diagnostics
+
+When you save manual-mode setup or reconfiguration with a Geoapify key, the integration validates access to the autocomplete API using one fixed public-place query. Invalid credentials, quota limits and network failures appear on the key field; failed validation does not overwrite the existing configuration. Leaving the key empty skips validation and keeps zones and supported coordinate links usable.
+
+A **Geoapify connection** diagnostic binary sensor appears on the integration's device page when manual mode and an API key are configured. It is independent of **Cloud connection**: a search-provider outage does not prevent sharing a saved target or selecting a HA zone. Its `last_checked`, `last_successful_connection` and safe `last_error` attributes explain the most recent observation. It represents the **last known result**, not a continuously monitored connection.
+
+To conserve requests, successful checks are shared between setup and runtime for 15 minutes, failed checks for one minute. A known invalid key or exhausted quota also pauses further Geoapify search requests for that minute. A fresh HA process performs at most one initial check for the configured key; a recent setup check avoids another request on reload. Normal Geoapify searches refresh the diagnostic status themselves. There is **no periodic Geoapify health polling**, and refreshing the dashboard, reading the diagnostic sensor, choosing a zone or resolving a coordinate-only link does not issue a Geoapify request. Clearing/changing the key never reuses another key's status. Existing installations without a key and entity mode make no checks.
+
 ### 2. Add the dashboard card
 
 The card is **bundled with the Route Progress integration**, starting with v0.14.0. HACS installs and updates both together. Do not add a second HACS dashboard repository, copy JavaScript into `/config/www`, or manually register a dashboard resource: the integration loads the card automatically.
@@ -206,6 +214,7 @@ The integration reports navigation state neutrally as present, absent, or unknow
 | sensor.route_progress_share_status | Server-side share lifecycle status |
 | binary_sensor.route_progress_active_share | Whether a share is active |
 | binary_sensor.route_progress_cloud_connection | Service connection diagnostics |
+| binary_sensor.route_progress_geoapify_connection | Last known Geoapify connectivity; manual mode with a configured key only |
 | button.route_progress_start_share | Create a new share |
 | button.route_progress_accept_destination | Accept a changed destination |
 | button.route_progress_finish_share | Finish the active share |

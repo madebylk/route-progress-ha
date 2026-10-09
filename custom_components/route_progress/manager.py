@@ -86,6 +86,7 @@ class RouteProgressManager:
         self.last_successful_connection: datetime | None = None
         self.last_error: str | None = None
         self.available = True
+        self.geoapify = None
         self.manual_destination: dict[str, Any] | None = None
         self.manual_destination_updated_at: datetime | None = None
 

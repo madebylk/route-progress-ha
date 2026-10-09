@@ -138,6 +138,18 @@ def load_modules():
         async_register_command=lambda *a: None,
     )
     module("homeassistant.components.http", StaticPathConfig=lambda *a: a)
+    module(
+        "homeassistant.helpers.entity",
+        Entity=type("Entity", (), {}),
+        EntityCategory=types.SimpleNamespace(DIAGNOSTIC="diagnostic"),
+    )
+    module("homeassistant.helpers.device_registry", DeviceInfo=lambda **kwargs: kwargs)
+    module("homeassistant.helpers.entity_platform", AddEntitiesCallback=object)
+    module(
+        "homeassistant.components.binary_sensor",
+        BinarySensorEntity=type("BinarySensorEntity", (), {}),
+        BinarySensorDeviceClass=types.SimpleNamespace(CONNECTIVITY="connectivity"),
+    )
     helpers.entity_registry = module(
         "homeassistant.helpers.entity_registry", async_get=lambda hass: hass.registry
     )
@@ -156,6 +168,9 @@ def load_modules():
         manager = importlib.import_module(package.__name__ + ".manager")
         config = importlib.import_module(package.__name__ + ".config_flow")
         dashboard = importlib.import_module(package.__name__ + ".dashboard")
+        dashboard.test_binary_sensor = importlib.import_module(
+            package.__name__ + ".binary_sensor"
+        )
     return manager, config, dashboard
 
 

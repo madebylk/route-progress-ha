@@ -218,3 +218,82 @@ class LookupTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(destination.DestinationError, "rate_limited"):
             await lookup.search("Berlin")
         lookup._lock.release()
+
+
+class ConnectionStatusTests(unittest.IsolatedAsyncioTestCase):
+    async def test_setup_and_reload_share_successful_check(self):
+        session = Session(Response(payload={"features": []}))
+        lookup = destination.DestinationLookup(session, "secret")
+        changes = []
+        remove = lookup.add_listener(lambda: changes.append(lookup.connected))
+        await lookup.check_api()
+        await lookup.check_api()
+        self.assertEqual(len(session.requests), 1)
+        self.assertTrue(lookup.connected)
+        self.assertIsNotNone(lookup.last_successful_connection)
+        self.assertEqual(changes, [True])
+        remove()
+        self.assertEqual(len(lookup._listeners), 0)
+
+    async def test_failed_check_backoff_and_normal_search_recovery(self):
+        session = Session(Response(403), Response(payload={"features": []}))
+        lookup = destination.DestinationLookup(session, "secret")
+        for _ in range(2):
+            with self.assertRaisesRegex(
+                destination.DestinationError, "invalid_api_key"
+            ):
+                await lookup.check_api()
+        self.assertEqual(len(session.requests), 1)
+        self.assertFalse(lookup.connected)
+        self.assertEqual(lookup.last_error, "invalid_api_key")
+        lookup._last_request = 0
+        with self.assertRaisesRegex(destination.DestinationError, "invalid_api_key"):
+            await lookup.search("Hamburg")
+        self.assertEqual(len(session.requests), 1)
+        lookup._checked_monotonic -= 61
+        lookup._last_request = 0
+        await lookup.search("Hamburg")
+        self.assertTrue(lookup.connected)
+        self.assertIsNone(lookup.last_error)
+        await lookup.check_api()
+        self.assertEqual(len(session.requests), 2)
+
+    async def test_expired_success_rechecks_once(self):
+        session = Session(
+            Response(payload={"features": []}), Response(payload={"features": []})
+        )
+        lookup = destination.DestinationLookup(session, "secret")
+        await lookup.check_api()
+        lookup._checked_monotonic -= 901
+        lookup._last_request = 0
+        await lookup.check_api()
+        self.assertEqual(len(session.requests), 2)
+
+    async def test_links_and_local_errors_do_not_change_provider_status(self):
+        lookup = destination.DestinationLookup(Session(), "secret")
+        await lookup.search("https://www.google.com/maps/search/?query=53,10")
+        self.assertIsNone(lookup.connected)
+        self.assertIsNone(lookup.last_checked)
+        with self.assertRaises(destination.DestinationError):
+            await lookup.search("Hamburg")
+        self.assertIsNone(lookup.connected)
+
+    async def test_no_key_no_validation_requests(self):
+        session = Session()
+        lookup = destination.DestinationLookup(session, "")
+        await lookup.check_api()
+        self.assertEqual(session.requests, [])
+        self.assertIsNone(lookup.connected)
+
+    async def test_http_quota_and_bad_payload_update_diagnostics(self):
+        for response, error in [
+            (Response(429), "rate_limited"),
+            (Response(500), "lookup_failed"),
+            (Response(raw=b"[]"), "lookup_failed"),
+        ]:
+            lookup = destination.DestinationLookup(Session(response), "secret")
+            with self.assertRaisesRegex(destination.DestinationError, error):
+                await lookup.check_api()
+            self.assertFalse(lookup.connected)
+            self.assertEqual(lookup.last_error, error)
+            self.assertIsNotNone(lookup.last_checked)

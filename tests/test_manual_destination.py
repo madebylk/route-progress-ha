@@ -2,7 +2,7 @@
 
 import types
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from ha_test_support import HAError, config_module, dashboard_module, make_manager
 
@@ -96,7 +96,13 @@ class ConfigTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             set(str(k) for k in form["data_schema"].schema), {"geoapify_api_key"}
         )
-        result = await flow.async_step_destination({"geoapify_api_key": "private"})
+        flow.hass = types.SimpleNamespace(data={})
+        with patch.object(
+            config_module,
+            "get_lookup",
+            return_value=types.SimpleNamespace(check_api=AsyncMock()),
+        ):
+            result = await flow.async_step_destination({"geoapify_api_key": "private"})
         self.assertEqual(result["data"]["geoapify_api_key"], "private")
         form = await flow.async_step_user({**COMMON, "destination_source": "entities"})
         self.assertEqual(
@@ -200,3 +206,113 @@ class DashboardTests(unittest.IsolatedAsyncioTestCase):
             [error[1] for error in errors], ["result_expired", "result_expired"]
         )
         self.assertIsNone(manager.manual_destination)
+
+
+class GeoapifyFlowTests(unittest.IsolatedAsyncioTestCase):
+    async def test_invalid_key_stays_in_form_and_does_not_save(self):
+        for flow_class in [
+            config_module.RouteProgressConfigFlow,
+            config_module.RouteProgressOptionsFlow,
+        ]:
+            flow = flow_class()
+            flow.hass = types.SimpleNamespace(data={})
+            flow._pending = dict(COMMON)
+            check = AsyncMock(
+                side_effect=config_module.DestinationError("invalid_api_key")
+            )
+            with patch.object(
+                config_module,
+                "get_lookup",
+                return_value=types.SimpleNamespace(check_api=check),
+            ):
+                result = await flow.async_step_destination(
+                    {"geoapify_api_key": "wrong"}
+                )
+            self.assertEqual(result["type"], "form")
+            self.assertEqual(
+                result["errors"], {"geoapify_api_key": "geoapify_invalid_key"}
+            )
+            check.assert_awaited_once()
+
+    async def test_errors_mapped_without_sensitive_provider_details(self):
+        for code, expected in [
+            ("rate_limited", "geoapify_rate_limited"),
+            ("lookup_failed", "geoapify_unavailable"),
+        ]:
+            flow = config_module.RouteProgressConfigFlow()
+            flow.hass = types.SimpleNamespace(data={})
+            flow._pending = dict(COMMON)
+            with patch.object(
+                config_module,
+                "get_lookup",
+                return_value=types.SimpleNamespace(
+                    check_api=AsyncMock(
+                        side_effect=config_module.DestinationError(code)
+                    )
+                ),
+            ):
+                result = await flow.async_step_destination(
+                    {"geoapify_api_key": "secret"}
+                )
+            self.assertEqual(result["errors"]["geoapify_api_key"], expected)
+
+    async def test_blank_key_and_entity_mode_skip_check(self):
+        for mode, values in [
+            ("manual", {"geoapify_api_key": "  "}),
+            (
+                "entities",
+                {
+                    "destination_entity": "sensor.name",
+                    "destination_position_entity": "sensor.point",
+                },
+            ),
+        ]:
+            flow = config_module.RouteProgressConfigFlow()
+            flow._pending = {**COMMON, "destination_source": mode}
+            with patch.object(config_module, "get_lookup") as lookup:
+                result = await flow.async_step_destination(values)
+            lookup.assert_not_called()
+            self.assertEqual(result["type"], "create_entry")
+            self.assertNotIn("geoapify_api_key", result["data"])
+
+    async def test_lookup_cache_is_scoped_to_key(self):
+        hass = types.SimpleNamespace(data={})
+        first = config_module.get_lookup(hass, "one")
+        self.assertIs(first, config_module.get_lookup(hass, " one "))
+        other = config_module.get_lookup(hass, "two")
+        self.assertIsNot(first, other)
+        self.assertIsNone(other.connected)
+        self.assertNotIn("one", hass.data["route_progress"]["geoapify_clients"])
+
+    async def test_diagnostic_is_independent_of_cloud_and_makes_no_requests(self):
+        manager, _ = make_manager()
+        manager.api.base_url = "https://example.com"
+        manager.available = False
+        manager.geoapify = config_module.get_lookup(manager.hass, "secret")
+        sensor = dashboard_module.test_binary_sensor.RouteProgressGeoapifyConnectionBinarySensor(
+            manager
+        )
+        self.assertTrue(sensor.available)
+        self.assertIsNone(sensor.is_on)
+        manager.geoapify._record_status()
+        self.assertTrue(sensor.is_on)
+        manager.geoapify._record_status("rate_limited")
+        self.assertFalse(sensor.is_on)
+        self.assertEqual(sensor.extra_state_attributes["last_error"], "rate_limited")
+        self.assertNotIn("secret", str(sensor.extra_state_attributes))
+
+    async def test_setup_reuses_config_check_and_unsubscribes_on_unload(self):
+        from test_destination import Response, Session
+
+        manager, _ = make_manager()
+        manager.config["geoapify_api_key"] = "shared-key"
+        lookup = config_module.get_lookup(manager.hass, "shared-key")
+        lookup.session = Session(Response(payload={"features": []}))
+        await lookup.check_api()
+        manager.hass.data["route_progress"]["card_registered"] = True
+        await dashboard_module.async_setup_dashboard(manager.hass, manager)
+        self.assertIs(manager.geoapify, lookup)
+        self.assertEqual(len(lookup.session.requests), 1)
+        self.assertEqual(len(lookup._listeners), 1)
+        await manager.async_stop()
+        self.assertEqual(len(lookup._listeners), 0)

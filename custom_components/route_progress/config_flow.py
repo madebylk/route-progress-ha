@@ -32,6 +32,8 @@ from .const import (
     SOURCE_ENTITIES,
     SOURCE_MANUAL,
 )
+from .destination import DestinationError
+from .geoapify import get_lookup
 
 
 def _marker(key, defaults, required=True):
@@ -203,6 +205,24 @@ class DestinationFlowMixin:
             data.pop(CONF_GEOAPIFY_API_KEY, None)
             data.update(user_input)
             data = _clean_input(data)
+            if data.get(CONF_DESTINATION_SOURCE) == SOURCE_MANUAL:
+                key = str(data.get(CONF_GEOAPIFY_API_KEY, "")).strip()
+                if key:
+                    data[CONF_GEOAPIFY_API_KEY] = key
+                    try:
+                        await get_lookup(self.hass, key).check_api()
+                    except DestinationError as err:
+                        error = {
+                            "invalid_api_key": "geoapify_invalid_key",
+                            "rate_limited": "geoapify_rate_limited",
+                        }.get(str(err), "geoapify_unavailable")
+                        return self.async_show_form(
+                            step_id="destination",
+                            data_schema=_destination_schema(data),
+                            errors={CONF_GEOAPIFY_API_KEY: error},
+                        )
+                else:
+                    data.pop(CONF_GEOAPIFY_API_KEY, None)
             if self._is_options:
                 self.hass.config_entries.async_update_entry(
                     self._entry, data=data, options={}

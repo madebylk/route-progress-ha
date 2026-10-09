@@ -12,10 +12,10 @@ from homeassistant.components import frontend, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_GEOAPIFY_API_KEY, CONF_VEHICLE_POSITION_ENTITY, DOMAIN
-from .destination import DestinationError, DestinationLookup, point_result
+from .destination import DestinationError, point_result
+from .geoapify import get_lookup
 
 STATIC_URL = "/route_progress_static/route-progress-card.js"
 
@@ -36,9 +36,17 @@ async def async_setup_dashboard(hass, manager):
         websocket_api.async_register_command(hass, websocket_destination)
         data["card_registered"] = True
     data["manager"] = manager
-    data["lookup"] = DestinationLookup(
-        async_get_clientsession(hass), manager.config.get(CONF_GEOAPIFY_API_KEY, "")
-    )
+    data["lookup"] = get_lookup(hass, manager.config.get(CONF_GEOAPIFY_API_KEY, ""))
+    if manager.manual_mode and manager.config.get(CONF_GEOAPIFY_API_KEY):
+        manager.geoapify = data["lookup"]
+        manager._unsubscribers.append(
+            manager.geoapify.add_listener(manager._notify_listeners)
+        )
+        try:
+            await manager.geoapify.check_api()
+        except DestinationError:
+            # A search outage must not disable server sharing or HA zones.
+            pass
     data["results"] = {}
     frontend.add_extra_js_url(hass, STATIC_URL + "?v=0.14.0")
 
